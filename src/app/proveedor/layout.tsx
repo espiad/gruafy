@@ -1,15 +1,15 @@
 import { redirect } from 'next/navigation';
-import { Home, ClipboardList, Users, User, FileCheck } from 'lucide-react';
+import { FileCheck } from 'lucide-react';
 import { AppShell } from '@/components/app/app-shell';
 import { type NavItem } from '@/components/app/nav-links';
 import { getProfile } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
 const NAV: NavItem[] = [
-  { href: '/proveedor', label: 'Panel', icon: Home, exact: true },
-  { href: '/proveedor/historial', label: 'Historial', icon: ClipboardList },
-  { href: '/proveedor/equipo', label: 'Equipo', icon: Users },
-  { href: '/proveedor/perfil', label: 'Perfil', icon: User },
+  { href: '/proveedor', label: 'Panel', icon: 'home', exact: true },
+  { href: '/proveedor/historial', label: 'Historial', icon: 'clipboard' },
+  { href: '/proveedor/equipo', label: 'Equipo', icon: 'users' },
+  { href: '/proveedor/perfil', label: 'Perfil', icon: 'user' },
 ];
 
 export default async function ProveedorLayout({ children }: { children: React.ReactNode }) {

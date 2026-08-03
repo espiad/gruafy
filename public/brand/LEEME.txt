@@ -1,0 +1,15 @@
+Carpeta para los archivos de marca oficiales de gruafy.
+
+Qué subir acá:
+- isotipo.svg   → el isotipo oficial (el "✓⟩") en UN solo color (negro está perfecto).
+                  Con este alcanza: la app lo recolorea a verde/crema/naranja según dónde va.
+- logo.svg      → (opcional) el lockup completo: isotipo + la palabra "gruafy" con su
+                  tipografía oficial. Se usa en header/footer si lo cargás.
+
+Favicon: no va acá. Reemplazá el archivo  src/app/icon.svg  por el isotipo oficial
+(o dejá el que ya está). Next arma el favicon solo.
+
+IMPORTANTE: para que el isotipo se recoloree solo en todo el sitio, hay que pegar el
+contenido del SVG dentro del componente src/components/brand/logo.tsx (no basta con dejar
+el archivo suelto). Lo más simple: abrí el .svg con un editor de texto, copiá el bloque
+<svg>...</svg> y pasáselo a Claude para que lo cablee.

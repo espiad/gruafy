@@ -38,3 +38,4 @@ tsconfig.tsbuildinfo
 # referencia pesada (documentos fuente extraídos)
 /reference/extracted
 /reference/*.zip
+.env*

@@ -1,15 +1,14 @@
-import { Home, PlusCircle, Car, Clock, User } from 'lucide-react';
 import { AppShell } from '@/components/app/app-shell';
 import { getProfile } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import type { NavItem } from '@/components/app/nav-links';
 
 const NAV: NavItem[] = [
-  { href: '/cliente', label: 'Inicio', icon: Home, exact: true },
-  { href: '/cliente/solicitar', label: 'Pedir', icon: PlusCircle },
-  { href: '/cliente/vehiculos', label: 'Vehículos', icon: Car },
-  { href: '/cliente/historial', label: 'Historial', icon: Clock },
-  { href: '/cliente/perfil', label: 'Perfil', icon: User },
+  { href: '/cliente', label: 'Inicio', icon: 'home', exact: true },
+  { href: '/cliente/solicitar', label: 'Pedir', icon: 'plus' },
+  { href: '/cliente/vehiculos', label: 'Vehículos', icon: 'car' },
+  { href: '/cliente/historial', label: 'Historial', icon: 'clock' },
+  { href: '/cliente/perfil', label: 'Perfil', icon: 'user' },
 ];
 
 export default async function ClienteLayout({ children }: { children: React.ReactNode }) {

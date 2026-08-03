@@ -1,17 +1,16 @@
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, ShieldCheck, Truck, CreditCard, Undo2, Settings, ScrollText } from 'lucide-react';
 import { AppShell } from '@/components/app/app-shell';
 import { getProfile } from '@/lib/auth/session';
 import type { NavItem } from '@/components/app/nav-links';
 
 const NAV: NavItem[] = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/admin/proveedores', label: 'Proveedores', icon: ShieldCheck },
-  { href: '/admin/servicios', label: 'Servicios', icon: Truck },
-  { href: '/admin/pagos', label: 'Pagos', icon: CreditCard },
-  { href: '/admin/reembolsos', label: 'Reembolsos', icon: Undo2 },
-  { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
-  { href: '/admin/auditoria', label: 'Auditoría', icon: ScrollText },
+  { href: '/admin', label: 'Dashboard', icon: 'dashboard', exact: true },
+  { href: '/admin/proveedores', label: 'Proveedores', icon: 'shield' },
+  { href: '/admin/servicios', label: 'Servicios', icon: 'truck' },
+  { href: '/admin/pagos', label: 'Pagos', icon: 'card' },
+  { href: '/admin/reembolsos', label: 'Reembolsos', icon: 'refund' },
+  { href: '/admin/configuracion', label: 'Configuración', icon: 'settings' },
+  { href: '/admin/auditoria', label: 'Auditoría', icon: 'audit' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
