@@ -37,14 +37,33 @@ export default async function ProveedorPanel() {
     .eq('status', 'pending')
     .gt('expires_at', new Date().toISOString());
 
-  // Cargamos el detalle de las órdenes ofertadas (solo lo que el proveedor puede ver antes del pago).
+  // Datos de las órdenes ofertadas. Antes del pago el proveedor no está asignado,
+  // así que RLS no lo deja leer la orden: traemos con service role SOLO los campos
+  // no sensibles (destino, distancia, condiciones y monto), nunca el origen exacto
+  // ni el contacto del cliente. Eso se revela recién después del pago.
   const orderIds = (offers ?? []).map((o) => o.order_id);
-  const { data: offerOrders } = orderIds.length
-    ? await supabase
+  let offerOrders: Array<{
+    id: string;
+    dest_address: string | null;
+    distance_meters: number | null;
+    dollys: number;
+    wheels_blocked: number;
+    pricing: unknown;
+    state: string;
+  }> = [];
+  if (orderIds.length) {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    try {
+      const { data } = await createAdminClient()
         .from('service_orders')
         .select('id, dest_address, distance_meters, dollys, wheels_blocked, pricing, state')
         .in('id', orderIds)
-    : { data: [] };
+        .eq('state', 'searching_provider');
+      offerOrders = (data ?? []) as typeof offerOrders;
+    } catch {
+      offerOrders = [];
+    }
+  }
 
   return (
     <div className="space-y-8">

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { LocateFixed, Loader2, MapPin, Flag } from 'lucide-react';
+import { LocateFixed, Loader2, MapPin, Flag, X } from 'lucide-react';
 import { publicEnv } from '@/lib/env';
 import {
   autocomplete,
@@ -44,83 +44,139 @@ interface Props {
 
 type Field = 'origin' | 'dest';
 
-/** Búsqueda de dirección con sugerencias del AMBA. */
+/**
+ * Búsqueda de dirección (AMBA). UX: sugiere mientras escribís, pero al elegir una
+ * cierra y NO vuelve a sugerir (hasta que edites). Overlay sólido con z alto para
+ * que no compita con el mapa, y botón para limpiar y buscar de nuevo.
+ */
 function AddressSearch({
   label,
   color,
   value,
   onPick,
-  onFocusField,
+  onClear,
 }: {
   label: string;
   color: string;
   value: GeoPoint | null;
   onPick: (p: GeoPoint) => void;
-  onFocusField: () => void;
+  onClear: () => void;
 }) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(value?.address ?? '');
   const [results, setResults] = useState<GeoPoint[]>([]);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Dirección ya elegida: mientras el texto coincida, no volvemos a sugerir.
+  const chosenRef = useRef<string | null>(value?.address ?? null);
 
+  // Si el valor cambia desde afuera (ej: "usar mi ubicación" o toque en el mapa).
   useEffect(() => {
-    setText(value?.address ?? '');
-  }, [value]);
-
-  useEffect(() => {
-    if (text.trim().length < 3) {
+    if (value?.address && value.address !== text) {
+      setText(value.address);
+      chosenRef.current = value.address;
       setResults([]);
+      setOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value?.address]);
+
+  useEffect(() => {
+    const q = text.trim();
+    // No sugerir si está vacío, muy corto, o si es exactamente lo ya elegido.
+    if (q.length < 3 || q === chosenRef.current) {
+      setResults([]);
+      setLoading(false);
       return;
     }
+    setLoading(true);
     const t = setTimeout(async () => {
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        const r = await autocomplete(text, ctrl.signal);
+        const r = await autocomplete(q, ctrl.signal);
         setResults(r);
-        setOpen(true);
+        setOpen(r.length > 0);
       } catch {
         /* cancelado */
+      } finally {
+        setLoading(false);
       }
-    }, 280);
+    }, 320);
     return () => clearTimeout(t);
   }, [text]);
+
+  function choose(p: GeoPoint) {
+    chosenRef.current = p.address;
+    setText(p.address);
+    setResults([]);
+    setOpen(false);
+    inputRef.current?.blur(); // cierra el teclado en mobile
+    onPick(p);
+  }
+
+  function clear() {
+    chosenRef.current = null;
+    setText('');
+    setResults([]);
+    setOpen(false);
+    onClear();
+    inputRef.current?.focus();
+  }
+
+  const hasValue = Boolean(value);
 
   return (
     <div className="relative">
       <label className="mb-1 flex items-center gap-1.5 text-sm font-medium">
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} /> {label}
       </label>
-      <input
-        value={text}
-        placeholder="Escribí una dirección del AMBA"
-        onFocus={() => {
-          onFocusField();
-          if (results.length) setOpen(true);
-        }}
-        onChange={(e) => setText(e.target.value)}
-        className="focus-ring h-12 w-full rounded-lg border border-input bg-background px-3 text-base"
-        autoComplete="off"
-      />
+      <div className="relative">
+        <input
+          ref={inputRef}
+          value={text}
+          placeholder="Escribí una dirección del AMBA"
+          onChange={(e) => {
+            chosenRef.current = null; // el usuario está editando
+            setText(e.target.value);
+          }}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          className={`focus-ring h-12 w-full rounded-lg border bg-background pl-3 pr-9 text-base ${hasValue ? 'border-success' : 'border-input'}`}
+          autoComplete="off"
+        />
+        {(text.length > 0 || hasValue) && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={clear}
+            aria-label="Limpiar"
+            className="focus-ring absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
       {open && results.length > 0 && (
-        <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-popover shadow-lg">
+        <ul className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-border bg-popover shadow-xl">
           {results.map((r, i) => (
             <li key={`${r.lat}-${r.lng}-${i}`}>
               <button
                 type="button"
-                className="block w-full px-3 py-2.5 text-left text-sm hover:bg-accent"
-                onClick={() => {
-                  setText(r.address);
-                  setOpen(false);
-                  onPick(r);
-                }}
+                onMouseDown={(e) => e.preventDefault()}
+                className="flex w-full items-start gap-2 border-b border-border/50 px-3 py-3 text-left text-sm last:border-0 hover:bg-accent"
+                onClick={() => choose(r)}
               >
-                {r.address}
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
+                <span>{r.address}</span>
               </button>
             </li>
           ))}
         </ul>
+      )}
+      {loading && text.trim().length >= 3 && !open && (
+        <p className="mt-1 text-xs text-muted-foreground">Buscando…</p>
       )}
     </div>
   );
@@ -311,8 +367,31 @@ export function LocationPicker({ origin, dest, onOrigin, onDest, onDistance }: P
         Usar mi ubicación actual
       </button>
 
-      <AddressSearch label="¿Dónde estás? (origen)" color="#1C3C36" value={origin} onPick={onOrigin} onFocusField={() => setActiveField('origin')} />
-      <AddressSearch label="¿A dónde lo llevás? (destino)" color="#FF9E00" value={dest} onPick={onDest} onFocusField={() => setActiveField('dest')} />
+      <AddressSearch
+        label="¿Dónde estás? (origen)"
+        color="#1C3C36"
+        value={origin}
+        onPick={(p) => {
+          onOrigin(p);
+          setActiveField('dest');
+        }}
+        onClear={() => {
+          onOrigin(null);
+          onDistance(null, null);
+          setActiveField('origin');
+        }}
+      />
+      <AddressSearch
+        label="¿A dónde lo llevás? (destino)"
+        color="#FF9E00"
+        value={dest}
+        onPick={(p) => onDest(p)}
+        onClear={() => {
+          onDest(null);
+          onDistance(null, null);
+          setActiveField('dest');
+        }}
+      />
 
       {/* Selector de qué fija el toque en el mapa */}
       <div className="flex gap-2 text-xs">
