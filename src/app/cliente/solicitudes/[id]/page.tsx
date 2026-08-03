@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, MessageCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/orders/status-badge';
@@ -11,11 +11,10 @@ import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map';
 import { ReviewForm } from '@/features/reviews/review-form';
 import { OrderAutoRefresh, SearchingCard, PaymentCountdown } from '@/features/orders/order-live';
+import { SupportButton } from '@/features/support/support-button';
 import { formatDateTime, formatARS } from '@/lib/format';
-import { STATE_LABELS, type OrderState } from '@/features/orders/state-machine';
+import { STATE_LABELS, isTerminal, type OrderState } from '@/features/orders/state-machine';
 import type { QuoteBreakdown } from '@/features/pricing/pricing';
-
-const WAITING_STATES: OrderState[] = ['searching_provider', 'awaiting_payment', 'payment_pending'];
 
 const REVEAL_STATES: OrderState[] = [
   'paid',
@@ -47,14 +46,26 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
   const showMap = TRACK_STATES.includes(state);
 
   let provider: { legal_name: string; contact_phone: string | null; rating_avg: number } | null = null;
+  let driverName: string | null = null;
+  let truckPatente: string | null = null;
   let lastLoc: { lat: number; lng: number; created_at: string } | null = null;
   if (revealed && order.provider_id) {
-    const [{ data: p }, { data: loc }] = await Promise.all([
-      supabase.from('provider_accounts').select('legal_name, contact_phone, rating_avg').eq('id', order.provider_id).single(),
-      supabase.from('tracking_locations').select('lat, lng, created_at').eq('order_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    // Datos del proveedor/conductor/grúa: se revelan al pagar. Con service role
+    // porque el cliente no es miembro del proveedor (RLS), trayendo solo lo público.
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const [{ data: p }, { data: loc }, { data: drv }, { data: trk }] = await Promise.all([
+      admin.from('provider_accounts').select('legal_name, contact_phone, rating_avg').eq('id', order.provider_id).single(),
+      admin.from('tracking_locations').select('lat, lng, created_at').eq('order_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      order.driver_id
+        ? admin.from('provider_members').select('full_name').eq('id', order.driver_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      admin.from('tow_trucks').select('patente').eq('provider_id', order.provider_id).limit(1).maybeSingle(),
     ]);
     provider = p;
     lastLoc = loc;
+    driverName = drv?.full_name ?? null;
+    truckPatente = trk?.patente ?? null;
   }
 
   let hasReview = false;
@@ -89,8 +100,8 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
         <p className="mt-2 text-xs text-muted-foreground">Creada el {formatDateTime(order.created_at)}</p>
       </div>
 
-      {/* Actualiza la vista sola mientras se espera (búsqueda → pago → tracking). */}
-      <OrderAutoRefresh active={WAITING_STATES.includes(state)} />
+      {/* Actualiza la vista sola en todo estado activo (búsqueda → pago → tracking → cierre). */}
+      <OrderAutoRefresh active={!isTerminal(state)} />
 
       {state === 'searching_provider' && (
         <SearchingCard orderId={order.id} deadline={order.offer_deadline} />
@@ -152,13 +163,23 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
           <p className="mt-1 text-sm">
             <strong>{provider.legal_name}</strong> · ★ {provider.rating_avg.toFixed(1)}
           </p>
+          <p className="text-sm text-muted-foreground">
+            {driverName ? `Conductor: ${driverName}` : ''}
+            {driverName && truckPatente ? ' · ' : ''}
+            {truckPatente ? `Grúa ${truckPatente}` : ''}
+          </p>
           {provider.contact_phone && (
-            <a href={`tel:${provider.contact_phone}`} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-green">
-              <Phone className="h-4 w-4" /> Llamar
-            </a>
+            <div className="mt-3 flex gap-2">
+              <a href={`tel:${provider.contact_phone.replace(/\D/g, '')}`} className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-input py-2 text-sm font-medium hover:bg-accent">
+                <Phone className="h-4 w-4" /> Llamar
+              </a>
+              <a href={`https://wa.me/${provider.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-green py-2 text-sm font-semibold text-brand-cream">
+                <MessageCircle className="h-4 w-4" /> WhatsApp
+              </a>
+            </div>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
-            El seguimiento en vivo en el mapa se activa mientras la grúa comparte su ubicación.
+            El seguimiento en vivo se actualiza solo mientras la grúa comparte su ubicación.
           </p>
         </div>
       )}
@@ -170,6 +191,11 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
           dest={order.dest_lat != null && order.dest_lng != null ? { lat: order.dest_lat, lng: order.dest_lng } : null}
           initialProvider={lastLoc ? { lat: lastLoc.lat, lng: lastLoc.lng, at: lastLoc.created_at } : null}
         />
+      )}
+
+      {/* Ayuda humana durante estados activos (incl. esperas que solo admin cancela). */}
+      {!isTerminal(state) && state !== 'searching_provider' && (
+        <SupportButton role="cliente" orderId={order.id} stateLabel={STATE_LABELS[state]} />
       )}
 
       {state === 'completed' && !hasReview && <ReviewForm orderId={order.id} />}

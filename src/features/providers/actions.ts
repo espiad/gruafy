@@ -58,8 +58,8 @@ export async function updateProviderLocation(lat: number, lng: number): Promise<
   return { ok: true };
 }
 
-/** Acepta una oferta de forma atómica (RPC con bloqueo). */
-export async function acceptOffer(orderId: string): Promise<Result> {
+/** Acepta una oferta de forma atómica (RPC con bloqueo) y fija el conductor asignado. */
+export async function acceptOffer(orderId: string, driverId?: string): Promise<Result> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -74,6 +74,12 @@ export async function acceptOffer(orderId: string): Promise<Result> {
   });
   if (error) return { ok: false, error: 'No se pudo aceptar (¿ya la tomó otro?)' };
   if (data !== true) return { ok: false, error: 'La oferta ya no está disponible' };
+
+  // Registra qué conductor está manejando (para mostrarle los datos correctos al cliente).
+  if (driverId) {
+    await supabase.from('service_orders').update({ driver_id: driverId }).eq('id', orderId);
+  }
+
   revalidatePath('/proveedor');
   revalidatePath(`/proveedor/servicios/${orderId}`);
   return { ok: true, value: true };

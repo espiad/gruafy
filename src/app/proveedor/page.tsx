@@ -44,26 +44,47 @@ export default async function ProveedorPanel() {
   const orderIds = (offers ?? []).map((o) => o.order_id);
   let offerOrders: Array<{
     id: string;
+    origin_address: string | null;
     dest_address: string | null;
     distance_meters: number | null;
     dollys: number;
     wheels_blocked: number;
+    conditions: Record<string, unknown> | null;
+    vehicle_id: string | null;
     pricing: unknown;
     state: string;
   }> = [];
+  let offerVehicles: Record<string, { brand: string; model: string; year: number | null; color: string | null; gearbox: string }> = {};
   if (orderIds.length) {
     const { createAdminClient } = await import('@/lib/supabase/admin');
     try {
-      const { data } = await createAdminClient()
+      const admin = createAdminClient();
+      const { data } = await admin
         .from('service_orders')
-        .select('id, dest_address, distance_meters, dollys, wheels_blocked, pricing, state')
+        .select('id, origin_address, dest_address, distance_meters, dollys, wheels_blocked, conditions, vehicle_id, pricing, state')
         .in('id', orderIds)
         .eq('state', 'searching_provider');
       offerOrders = (data ?? []) as typeof offerOrders;
+      const vIds = offerOrders.map((o) => o.vehicle_id).filter(Boolean) as string[];
+      if (vIds.length) {
+        const { data: vs } = await admin
+          .from('vehicles')
+          .select('id, brand, model, year, gearbox')
+          .in('id', vIds);
+        offerVehicles = Object.fromEntries((vs ?? []).map((v) => [v.id, { ...v, color: null }]));
+      }
     } catch {
       offerOrders = [];
     }
   }
+
+  // Conductores para elegir quién maneja al aceptar.
+  const { data: drivers } = await supabase
+    .from('provider_members')
+    .select('id, full_name, role')
+    .eq('provider_id', provider.id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true });
 
   return (
     <div className="space-y-8">
@@ -77,20 +98,20 @@ export default async function ProveedorPanel() {
         <AvailabilityToggle initial={provider.is_available} />
       </div>
 
-      {active && (
+      {active ? (
+        // Con un servicio en curso, el foco es ese: nada de pedidos nuevos.
         <Link
           href={`/proveedor/servicios/${active.id}`}
-          className="focus-ring block rounded-2xl border-2 border-brand-orange bg-brand-orange/5 p-5"
+          className="focus-ring block rounded-2xl border-2 border-brand-orange bg-brand-orange/5 p-6 text-center"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wide text-brand-green">Servicio en curso</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-brand-green">Tenés un servicio en curso</span>
+          <div className="mt-2 flex items-center justify-center">
             <StatusBadge state={active.state as OrderState} />
           </div>
-          <p className="mt-2 text-sm">Destino: {active.dest_address}</p>
-          <span className="mt-2 inline-block text-sm font-medium text-brand-green">Abrir servicio →</span>
+          <p className="mt-2 text-sm text-muted-foreground">Destino: {active.dest_address}</p>
+          <span className="mt-3 inline-block font-semibold text-brand-green">Abrir el servicio →</span>
         </Link>
-      )}
-
+      ) : (
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Pedidos para vos
@@ -109,13 +130,18 @@ export default async function ProveedorPanel() {
                   key={offer.id}
                   orderId={offer.order_id}
                   expiresAt={offer.expires_at}
+                  originAddress={order.origin_address}
                   destAddress={order.dest_address}
                   distanceMeters={order.distance_meters}
                   dollys={order.dollys}
                   wheelsBlocked={order.wheels_blocked}
+                  wheelsUnsure={Boolean((order.conditions as { wheels_unsure?: boolean } | null)?.wheels_unsure)}
+                  vehicleType={(order.conditions as { vehicle_type?: 'auto' | 'moto' } | null)?.vehicle_type}
+                  vehicle={order.vehicle_id ? offerVehicles[order.vehicle_id] ?? null : null}
                   amountProvider={
                     (order.pricing as { saldo_estimado_gruero?: number } | null)?.saldo_estimado_gruero ?? null
                   }
+                  drivers={drivers ?? []}
                 />
               );
             })}
@@ -126,6 +152,7 @@ export default async function ProveedorPanel() {
           </p>
         )}
       </section>
+      )}
 
       {active?.amount_upfront != null && (
         <p className="text-xs text-muted-foreground">Anticipo cobrado por gruafy: {formatARS(active.amount_upfront)}</p>

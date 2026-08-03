@@ -37,9 +37,17 @@ export async function createOrder(input: CreateOrderInput): Promise<ActionResult
     toPricingSettings(settings),
   );
 
-  // Vehículo: usa el existente o crea uno nuevo del cliente.
+  // Vehículo: usa el existente o crea uno nuevo del cliente (máximo 3 por cuenta).
   let vehicleId = data.vehicle_id ?? null;
   if (!vehicleId && data.vehicle) {
+    const { count } = await supabase
+      .from('vehicles')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_id', user.id)
+      .is('deleted_at', null);
+    if ((count ?? 0) >= 3) {
+      return { ok: false, error: 'Llegaste al máximo de 3 vehículos. Borrá uno para agregar otro.' };
+    }
     const { data: v, error: vErr } = await supabase
       .from('vehicles')
       .insert({

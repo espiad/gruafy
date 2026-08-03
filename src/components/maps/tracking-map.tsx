@@ -34,9 +34,25 @@ function mapStyle(): string | maplibregl.StyleSpecification {
   };
 }
 
-function marker(color: string) {
+/** Pin tipo "gota" con una letra/etiqueta adentro (recogida/destino). */
+function labelPin(letter: string, color: string) {
   const el = document.createElement('div');
-  el.style.cssText = `width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #F8F7F4;box-shadow:0 1px 4px rgba(0,0,0,.4)`;
+  el.innerHTML = `
+    <div style="position:relative;transform:translateY(-6px)">
+      <div style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:3px solid #F8F7F4;box-shadow:0 3px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center">
+        <span style="transform:rotate(45deg);color:#F8F7F4;font:700 13px system-ui">${letter}</span>
+      </div>
+    </div>`;
+  return el;
+}
+
+/** Marcador de la grúa: círculo con ícono de camión, bien visible. */
+function truckMarker() {
+  const el = document.createElement('div');
+  el.innerHTML = `
+    <div style="width:38px;height:38px;border-radius:50%;background:#FF9E00;border:3px solid #001910;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#001910" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+    </div>`;
   return el;
 }
 
@@ -60,20 +76,35 @@ export function TrackingMap({ orderId, origin, dest, initialProvider }: Props) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     mapRef.current = map;
 
-    if (origin) new maplibregl.Marker({ element: marker('#1C3C36') }).setLngLat([origin.lng, origin.lat]).setPopup(new maplibregl.Popup().setText('Origen')).addTo(map);
-    if (dest) new maplibregl.Marker({ element: marker('#FF9E00') }).setLngLat([dest.lng, dest.lat]).setPopup(new maplibregl.Popup().setText('Destino')).addTo(map);
+    if (origin)
+      new maplibregl.Marker({ element: labelPin('A', '#1C3C36'), anchor: 'bottom' })
+        .setLngLat([origin.lng, origin.lat])
+        .setPopup(new maplibregl.Popup({ offset: 24 }).setText('Punto de recogida'))
+        .addTo(map);
+    if (dest)
+      new maplibregl.Marker({ element: labelPin('B', '#FF9E00'), anchor: 'bottom' })
+        .setLngLat([dest.lng, dest.lat])
+        .setPopup(new maplibregl.Popup({ offset: 24 }).setText('Destino'))
+        .addTo(map);
 
+    // Línea de ruta A → B.
     if (origin && dest) {
+      map.on('load', () => {
+        if (map.getSource('trip')) return;
+        map.addSource('trip', {
+          type: 'geojson',
+          data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[origin.lng, origin.lat], [dest.lng, dest.lat]] } },
+        });
+        map.addLayer({ id: 'trip', type: 'line', source: 'trip', paint: { 'line-color': '#1C3C36', 'line-width': 4, 'line-dasharray': [1.4, 1.1] } });
+      });
       const b = new maplibregl.LngLatBounds([origin.lng, origin.lat], [origin.lng, origin.lat]);
       b.extend([dest.lng, dest.lat]);
-      map.fitBounds(b, { padding: 60, maxZoom: 14 });
+      map.fitBounds(b, { padding: 70, maxZoom: 14 });
     }
 
     const place = (lat: number, lng: number) => {
       if (!providerMarker.current) {
-        providerMarker.current = new maplibregl.Marker({ element: marker('#E08A00') })
-          .setLngLat([lng, lat])
-          .addTo(map);
+        providerMarker.current = new maplibregl.Marker({ element: truckMarker() }).setLngLat([lng, lat]).addTo(map);
       } else {
         providerMarker.current.setLngLat([lng, lat]);
       }
