@@ -1,10 +1,10 @@
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const STEPS = ['Empresa', 'Grúa', 'Documentos', 'Enviar'] as const;
+const STEPS = ['Empresa', 'Grúa', 'Conductor', 'Documentos', 'Enviar'] as const;
 
-/** Barra de progreso del alta de proveedor (1..4). Pasos previos quedan tildados. */
-export function OnboardingProgress({ current }: { current: 1 | 2 | 3 | 4 }) {
+/** Barra de progreso del alta de proveedor (1..5). Pasos previos quedan tildados. */
+export function OnboardingProgress({ current }: { current: 1 | 2 | 3 | 4 | 5 }) {
   return (
     <ol className="flex items-center gap-1">
       {STEPS.map((label, i) => {

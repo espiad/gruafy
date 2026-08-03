@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { assertTransition, type OrderState, type Actor } from '@/features/orders/state-machine';
-import { isValidCuit, normalizePatente, isValidPatente } from '@/lib/validation/argentina';
+import { isValidCuit, normalizePatente, isValidPatente, isValidDni } from '@/lib/validation/argentina';
 
 type Result = { ok: boolean; error?: string; value?: unknown };
 
@@ -176,8 +176,14 @@ const onboardingSchema = z.object({
     patente: z.string().transform(normalizePatente).refine(isValidPatente, 'Patente de grúa inválida'),
     brand: z.string().optional(),
     model: z.string().optional(),
-    year: z.coerce.number().int().optional(),
+    year: z.coerce.number().int().optional().catch(undefined),
     capacity: z.string().optional(),
+  }),
+  // Conductor dueño (base). Los adicionales se cargan después, ya aprobado.
+  driver: z.object({
+    full_name: z.string().min(2, 'Ingresá el nombre del conductor'),
+    dni: z.string().refine((v) => !v || isValidDni(v), 'DNI inválido').optional(),
+    phone: z.string().optional(),
   }),
 });
 
@@ -231,8 +237,9 @@ export async function createProviderAccount(input: z.infer<typeof onboardingSche
       provider_id: providerId,
       user_id: user.id,
       role: 'owner',
-      full_name: parsed.data.legal_name,
-      phone: parsed.data.contact_phone,
+      full_name: parsed.data.driver.full_name,
+      dni: parsed.data.driver.dni || null,
+      phone: parsed.data.driver.phone || parsed.data.contact_phone,
     });
     await admin.from('profiles').update({ role: 'provider_owner' }).eq('id', user.id);
   }
@@ -249,6 +256,43 @@ export async function createProviderAccount(input: z.infer<typeof onboardingSche
 
   revalidatePath('/proveedor');
   return { ok: true, value: providerId };
+}
+
+const driverSchema = z.object({
+  full_name: z.string().min(2, 'Ingresá el nombre'),
+  dni: z.string().refine((v) => !v || isValidDni(v), 'DNI inválido').optional(),
+  phone: z.string().optional(),
+});
+
+/** Agrega un conductor adicional (además del dueño). Máximo 4 adicionales. */
+export async function addDriver(input: z.infer<typeof driverSchema>): Promise<Result> {
+  const parsed = driverSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const provider = await providerOf(user.id);
+  if (!provider) return { ok: false, error: 'Sin proveedor' };
+
+  const { count } = await supabase
+    .from('provider_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('provider_id', provider.id)
+    .eq('role', 'driver');
+  if ((count ?? 0) >= 4) return { ok: false, error: 'Llegaste al máximo de 4 conductores adicionales' };
+
+  const { error } = await supabase.from('provider_members').insert({
+    provider_id: provider.id,
+    role: 'driver',
+    full_name: parsed.data.full_name,
+    dni: parsed.data.dni || null,
+    phone: parsed.data.phone || null,
+  });
+  if (error) return { ok: false, error: 'No pudimos agregar el conductor' };
+  revalidatePath('/proveedor/equipo');
+  return { ok: true };
 }
 
 /** Envía la cuenta a revisión del administrador. */

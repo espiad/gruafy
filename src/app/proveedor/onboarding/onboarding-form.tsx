@@ -2,20 +2,20 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle, CheckCircle2, Building2, Truck } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Building2, Truck, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OnboardingProgress } from '@/features/providers/onboarding-progress';
 import { createProviderAccount } from '@/features/providers/actions';
-import { isValidCuit, formatCuitInput, isValidPatente, normalizePatente } from '@/lib/validation/argentina';
+import { isValidCuit, formatCuitInput, isValidPatente, normalizePatente, isValidDni } from '@/lib/validation/argentina';
 import { cn } from '@/lib/utils';
 
 export function OnboardingForm() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [legalName, setLegalName] = useState('');
   const [cuit, setCuit] = useState('');
@@ -26,11 +26,17 @@ export function OnboardingForm() {
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [capacity, setCapacity] = useState('');
+  // Conductor dueño (base)
+  const [driverName, setDriverName] = useState('');
+  const [driverDni, setDriverDni] = useState('');
+  const [driverPhone, setDriverPhone] = useState('');
 
   const cuitValid = isValidCuit(cuit);
   const cuitTouched = cuit.replace(/\D/g, '').length >= 11;
   const patenteValid = isValidPatente(patente);
   const patenteTouched = patente.length >= 6;
+  const dniValid = !driverDni || isValidDni(driverDni);
+  const dniTouched = driverDni.replace(/\D/g, '').length >= 7;
 
   function goToTruck() {
     setError(null);
@@ -40,9 +46,16 @@ export function OnboardingForm() {
     setStep(2);
   }
 
-  function submit() {
+  function goToDriver() {
     setError(null);
     if (!patenteValid) return setError('Revisá la patente de la grúa (formato AB123CD o AAA123).');
+    setStep(3);
+  }
+
+  function submit() {
+    setError(null);
+    if (driverName.trim().length < 2) return setError('Ingresá el nombre del conductor.');
+    if (driverDni && !isValidDni(driverDni)) return setError('Revisá el DNI del conductor.');
     start(async () => {
       const res = await createProviderAccount({
         legal_name: legalName.trim(),
@@ -55,6 +68,11 @@ export function OnboardingForm() {
           model: model.trim(),
           year: year ? Number(year) : undefined,
           capacity: capacity.trim(),
+        },
+        driver: {
+          full_name: driverName.trim(),
+          dni: driverDni.trim() || undefined,
+          phone: driverPhone.trim() || undefined,
         },
       });
       if (res.ok) router.push('/proveedor/estado-solicitud');
@@ -146,6 +164,44 @@ export function OnboardingForm() {
         </div>
       )}
 
+      {step === 3 && (
+        <div className="space-y-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex items-center gap-2 text-brand-green">
+            <User className="h-5 w-5" />
+            <h2 className="font-semibold">Conductor</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Cargá al conductor a cargo de esta grúa (podés ser vos). Una vez aprobada la cuenta, vas a
+            poder sumar hasta 4 conductores más desde <strong>Equipo</strong>.
+          </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="driver_name">Nombre y apellido</Label>
+            <Input id="driver_name" value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Ej: Carlos Pérez" autoComplete="name" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="driver_dni">DNI</Label>
+              <div className="relative">
+                <Input
+                  id="driver_dni"
+                  value={driverDni}
+                  onChange={(e) => setDriverDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  inputMode="numeric"
+                  placeholder="Ej: 30111222"
+                  className={cn(dniTouched && (dniValid ? 'border-success pr-9' : 'border-destructive pr-9'))}
+                />
+                {dniTouched && dniValid && <CheckCircle2 className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-success" />}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="driver_phone">Teléfono (opcional)</Label>
+              <Input id="driver_phone" value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} type="tel" placeholder="11 5555 5555" />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">La licencia del conductor se sube en el paso de documentos.</p>
+        </div>
+      )}
+
       {error && (
         <p className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
@@ -153,12 +209,16 @@ export function OnboardingForm() {
       )}
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => setStep(1)} disabled={step === 1 || pending}>
+        <Button
+          variant="ghost"
+          onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : 1))}
+          disabled={step === 1 || pending}
+        >
           Atrás
         </Button>
-        {step === 1 ? (
-          <Button onClick={goToTruck} size="lg">Continuar</Button>
-        ) : (
+        {step === 1 && <Button onClick={goToTruck} size="lg">Continuar</Button>}
+        {step === 2 && <Button onClick={goToDriver} size="lg">Continuar</Button>}
+        {step === 3 && (
           <Button onClick={submit} size="lg" disabled={pending}>
             {pending && <Loader2 className="h-4 w-4 animate-spin" />} Continuar a documentos
           </Button>

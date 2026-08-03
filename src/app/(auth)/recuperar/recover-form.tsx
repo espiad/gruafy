@@ -26,8 +26,10 @@ export function RecoverForm() {
     });
     setLoading(false);
     // No revelamos si el email existe o no (buena práctica): siempre "enviado".
-    if (error && /rate limit/i.test(error.message)) {
-      return setError('Demasiados intentos. Esperá un momento.');
+    if (error && /rate|over_email_send/i.test(error.message)) {
+      return setError(
+        'El servicio de emails llegó a su límite por hora. Probá más tarde o configurá un email propio (SMTP) en Supabase.',
+      );
     }
     setSent(true);
   }

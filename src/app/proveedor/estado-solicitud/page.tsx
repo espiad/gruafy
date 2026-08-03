@@ -49,7 +49,7 @@ export default async function EstadoSolicitudPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <OnboardingProgress current={editable ? 3 : 4} />
+      <OnboardingProgress current={editable ? 4 : 5} />
 
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center gap-3">

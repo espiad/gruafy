@@ -26,10 +26,17 @@ export function formatDuration(seconds: number): string {
   return `${h} h ${m.toString().padStart(2, '0')} min`;
 }
 
-/** Fecha/hora corta en formato rioplatense. */
+const AR_TZ = 'America/Argentina/Buenos_Aires';
+
+/**
+ * Fecha/hora en horario de Argentina (UTC-3), consistente sin importar dónde se
+ * renderice (el server de Vercel corre en UTC; forzamos la zona para no mostrar
+ * horas corridas).
+ */
 export function formatDateTime(value: string | Date): string {
   const d = typeof value === 'string' ? new Date(value) : value;
   return d.toLocaleString('es-AR', {
+    timeZone: AR_TZ,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

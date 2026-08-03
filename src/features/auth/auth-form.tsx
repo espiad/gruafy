@@ -150,7 +150,9 @@ export function AuthForm({ mode, provider = false }: { mode: Mode; provider?: bo
 
 function traducirError(msg: string): string {
   if (/invalid login credentials/i.test(msg)) return 'Email o contraseña incorrectos.';
-  if (/already registered/i.test(msg)) return 'Ese email ya tiene una cuenta. Probá ingresar.';
-  if (/rate limit/i.test(msg)) return 'Demasiados intentos. Esperá un momento.';
+  if (/already registered|already been registered/i.test(msg)) return 'Ese email ya tiene una cuenta. Probá ingresar.';
+  if (/email.*rate|rate.*email|over_email_send/i.test(msg))
+    return 'El servicio de emails llegó a su límite por hora. Probá más tarde (o desactivá la confirmación por email para las pruebas).';
+  if (/rate limit|too many/i.test(msg)) return 'Hubo muchos pedidos seguidos. Esperá un momento.';
   return msg;
 }

@@ -86,14 +86,14 @@ create trigger trg_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
 
--- Límite de 5 conductores por proveedor (regla transaccional)
+-- Límite de conductores adicionales por proveedor (dueño-conductor + 4 = 5 personas).
 create or replace function enforce_member_limit()
 returns trigger language plpgsql as $$
 begin
   if (select count(*) from provider_members
       where provider_id = new.provider_id and role = 'driver'
-        and status <> 'deleted') >= 5 then
-    raise exception 'Un proveedor admite como máximo 5 conductores';
+        and status <> 'deleted') >= 4 then
+    raise exception 'Un proveedor admite como máximo 4 conductores adicionales';
   end if;
   return new;
 end $$;
