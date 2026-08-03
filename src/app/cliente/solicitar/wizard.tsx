@@ -58,7 +58,22 @@ export function SolicitarWizard({
   // Paso 3 — condiciones
   const [dollys, setDollys] = useState(0);
   const [wheels, setWheels] = useState(0);
+  const [wheelState, setWheelState] = useState<'yes' | 'no' | 'unsure' | null>(null);
+  const [dollyHelp, setDollyHelp] = useState(false);
   const [terms, setTerms] = useState(false);
+
+  // Traduce la respuesta simple del usuario a dollys/ruedas para el presupuesto.
+  function setWheels_(state: 'yes' | 'no' | 'unsure') {
+    setWheelState(state);
+    if (state === 'yes' || state === 'unsure') {
+      setWheels(0);
+      setDollys(0);
+    }
+  }
+  function setBlockedCount(n: number) {
+    setWheels(n);
+    setDollys(n <= 0 ? 0 : n <= 2 ? 1 : 2);
+  }
 
   // Distancia efectiva: ruta real si existe; si no hay mapa, estimación por km.
   const distanceMeters = geo ? (routedMeters ?? 0) : manualKm * 1000;
@@ -118,7 +133,7 @@ export function SolicitarWizard({
         duration_seconds: Number.isFinite(secs) ? secs : 0,
         dollys,
         wheels_blocked: wheels,
-        conditions: { public_road: true, vehicle_type: vType },
+        conditions: { public_road: true, vehicle_type: vType, wheels_unsure: wheelState === 'unsure' },
         accepted_terms: true,
       });
       if (!res.ok) return setError(res.error ?? 'No pudimos crear la solicitud');
@@ -292,29 +307,61 @@ export function SolicitarWizard({
               </div>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>¿Necesita dollys?</Label>
-                <p className="mb-1.5 text-xs text-muted-foreground">Carritos para ruedas que no giran.</p>
-                <div className="flex gap-2">
-                  {[0, 1, 2].map((n) => (
-                    <button key={n} type="button" onClick={() => setDollys(n)} className={`h-11 flex-1 rounded-md border text-sm ${dollys === n ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'}`}>
-                      {n === 0 ? 'No' : n}
-                    </button>
-                  ))}
-                </div>
+            <div className="space-y-3">
+              <Label>¿Las ruedas del vehículo giran?</Label>
+              <p className="text-xs text-muted-foreground">Ruedas trabadas, pinchadas o sin rueda necesitan un equipo especial.</p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {([
+                  { key: 'yes', label: 'Sí, giran todas', emoji: '👍' },
+                  { key: 'no', label: 'No, alguna no gira', emoji: '⚠️' },
+                  { key: 'unsure', label: 'No estoy seguro', emoji: '🤔' },
+                ] as const).map((o) => (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => setWheels_(o.key)}
+                    className={`flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl border text-xs font-medium sm:text-sm ${
+                      wheelState === o.key ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'
+                    }`}
+                  >
+                    <span className="text-base">{o.emoji}</span> {o.label}
+                  </button>
+                ))}
               </div>
-              <div>
-                <Label>Ruedas bloqueadas/faltantes</Label>
-                <p className="mb-1.5 text-xs text-muted-foreground">Si no estás seguro, dejá 0.</p>
-                <div className="flex gap-2">
-                  {[0, 1, 2, 3, 4].map((n) => (
-                    <button key={n} type="button" onClick={() => setWheels(n)} className={`h-11 flex-1 rounded-md border text-sm ${wheels === n ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'}`}>
-                      {n}
-                    </button>
-                  ))}
+
+              {wheelState === 'no' && (
+                <div className="space-y-2 rounded-xl border border-brand-orange/40 bg-brand-orange/5 p-3">
+                  <p className="text-sm font-medium">¿Cuántas ruedas no giran?</p>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setBlockedCount(n)}
+                        className={`h-11 flex-1 rounded-md border text-sm ${wheels === n ? 'border-brand-orange bg-brand-orange/20 text-brand-green' : 'border-input text-muted-foreground'}`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => setDollyHelp((v) => !v)} className="text-xs text-brand-green underline">
+                    ¿Por qué cambia el precio?
+                  </button>
+                  {dollyHelp && (
+                    <p className="text-xs text-muted-foreground">
+                      Para llevar un vehículo con ruedas que no giran usamos un <strong>dolly</strong>: un
+                      carrito que las levanta. Por eso puede sumar al presupuesto.
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {wheelState === 'unsure' && (
+                <p className="rounded-lg bg-accent p-3 text-xs text-accent-foreground">
+                  No hay problema. Presupuestamos sin equipo extra; si al llegar el gruero ve que hace
+                  falta, se suma al final y te lo avisa antes.
+                </p>
+              )}
             </div>
           </div>
         )}

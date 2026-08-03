@@ -136,7 +136,7 @@ begin
     where id = p_order_id;
 
   insert into order_events (order_id, from_state, to_state, actor_role, event)
-    values (p_order_id, 'searching_provider', 'awaiting_payment', 'provider', 'Grúa aceptó el servicio');
+    values (p_order_id, 'searching_provider', 'awaiting_payment', 'provider_owner', 'Grúa aceptó el servicio');
 
   return true;
 end $$;

@@ -41,6 +41,7 @@ export const createOrderSchema = z.object({
     .object({
       public_road: z.boolean().default(true),
       vehicle_type: z.enum(['auto', 'moto']).optional(),
+      wheels_unsure: z.boolean().optional(),
       notes: z.string().max(500).optional(),
     })
     .default({ public_road: true }),
