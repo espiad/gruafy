@@ -87,6 +87,7 @@ export type VehicleRow = Timestamps & {
   gearbox: 'manual' | 'automatic' | 'unknown';
   gearbox_locked: boolean | null;
   has_keys: boolean | null;
+  color: string | null;
   registration_doc_url: string | null;
   deleted_at: string | null;
 };

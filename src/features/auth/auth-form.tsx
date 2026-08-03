@@ -47,6 +47,7 @@ export function AuthForm({ mode, provider = false }: { mode: Mode; provider?: bo
               last_name: String(form.get('last_name') ?? ''),
               phone: String(form.get('phone') ?? ''),
               intended_role: provider ? 'provider_owner' : 'client',
+              accepted_terms: Boolean(form.get('accept_terms')),
             },
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
@@ -114,6 +115,23 @@ export function AuthForm({ mode, provider = false }: { mode: Mode; provider?: bo
           placeholder={mode === 'signup' ? 'Al menos 8 caracteres' : 'Tu contraseña'}
         />
       </div>
+
+      {mode === 'signup' && (
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="accept_terms" required className="mt-1 accent-brand-orange" />
+          <span>
+            Acepto los{' '}
+            <a href={provider ? '/legal/terminos-proveedores' : '/legal/terminos-clientes'} target="_blank" className="font-medium text-brand-green underline">
+              términos y condiciones
+            </a>{' '}
+            y la{' '}
+            <a href="/legal/privacidad" target="_blank" className="font-medium text-brand-green underline">
+              política de privacidad
+            </a>
+            .
+          </span>
+        </label>
+      )}
 
       {error && (
         <p className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">

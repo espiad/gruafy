@@ -46,7 +46,7 @@ export function SolicitarWizard({
   const [vehicleId, setVehicleId] = useState<string | null>(vehicles[0]?.id ?? null);
   const [useNew, setUseNew] = useState(vehicles.length === 0);
   const [vType, setVType] = useState<VehicleType>('auto');
-  const [nv, setNv] = useState({ brand: '', model: '', year: '', patente: '', gearbox: 'unknown' as VehicleLite['gearbox'], has_keys: true });
+  const [nv, setNv] = useState({ brand: '', model: '', year: '', patente: '', gearbox: 'unknown' as VehicleLite['gearbox'], has_keys: true, color: '' });
 
   // Paso 2 — ubicación
   const [origin, setOrigin] = useState<GeoPoint | null>(null);
@@ -127,6 +127,7 @@ export function SolicitarWizard({
               patente: normalizePatente(nv.patente),
               gearbox: vType === 'moto' ? 'unknown' : nv.gearbox,
               has_keys: nv.has_keys,
+              color: nv.color.trim() || undefined,
             }
           : undefined,
         origin,
@@ -241,6 +242,29 @@ export function SolicitarWizard({
                   <div className="space-y-1.5">
                     <Label htmlFor="patente">Patente</Label>
                     <Input id="patente" value={nv.patente} onChange={(e) => setNv({ ...nv, patente: e.target.value.toUpperCase() })} placeholder="AB123CD" />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Color</Label>
+                  <p className="mb-1.5 text-xs text-muted-foreground">Ayuda al gruero a identificarte más rápido.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {['Blanco', 'Negro', 'Gris', 'Plata', 'Rojo', 'Azul'].map((col) => (
+                      <button
+                        key={col}
+                        type="button"
+                        onClick={() => setNv({ ...nv, color: col })}
+                        className={`h-10 rounded-md border px-3 text-sm ${nv.color === col ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'}`}
+                      >
+                        {col}
+                      </button>
+                    ))}
+                    <Input
+                      value={['Blanco', 'Negro', 'Gris', 'Plata', 'Rojo', 'Azul'].includes(nv.color) ? '' : nv.color}
+                      onChange={(e) => setNv({ ...nv, color: e.target.value })}
+                      placeholder="Otro…"
+                      className="h-10 w-28"
+                    />
                   </div>
                 </div>
 

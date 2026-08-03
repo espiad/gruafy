@@ -14,6 +14,7 @@ import { OrderAutoRefresh, SearchingCard, PaymentCountdown } from '@/features/or
 import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
 import { InvoiceButtons } from '@/features/orders/invoice-buttons';
+import { ShareTrackingButton } from '@/features/orders/share-tracking-button';
 import { haversineMeters } from '@/lib/geo/distance';
 import { formatDateTime, formatARS } from '@/lib/format';
 import { STATE_LABELS, isTerminal, type OrderState } from '@/features/orders/state-machine';
@@ -29,11 +30,32 @@ const REVEAL_STATES: OrderState[] = [
   'completed',
 ];
 
-export default async function SolicitudDetalle({ params }: { params: Promise<{ id: string }> }) {
+export default async function SolicitudDetalle({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ payment_id?: string; collection_id?: string; pago?: string }>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
   const supabase = await createClient();
-  const { data: order } = await supabase.from('service_orders').select('*').eq('id', id).single();
+  let { data: order } = await supabase.from('service_orders').select('*').eq('id', id).single();
   if (!order) notFound();
+
+  // Al volver de Mercado Pago, confirmamos el pago server-to-server (fuente de
+  // verdad: consulta directa a MP). El retorno del navegador solo nos da el id.
+  const mpPaymentId = sp.payment_id || sp.collection_id;
+  if (mpPaymentId && (order.state === 'awaiting_payment' || order.state === 'payment_pending')) {
+    try {
+      const { reconcilePayment } = await import('@/features/payments/service');
+      await reconcilePayment(mpPaymentId);
+      const { data: refreshed } = await supabase.from('service_orders').select('*').eq('id', id).single();
+      if (refreshed) order = refreshed;
+    } catch {
+      /* si falla, el webhook o un reintento lo resuelven */
+    }
+  }
 
   const { data: events } = await supabase
     .from('order_events')
@@ -58,7 +80,7 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
     const { createAdminClient } = await import('@/lib/supabase/admin');
     const admin = createAdminClient();
     const [{ data: p }, { data: loc }, { data: drv }, { data: trk }] = await Promise.all([
-      admin.from('provider_accounts').select('legal_name, contact_phone, rating_avg').eq('id', order.provider_id).single(),
+      admin.from('provider_accounts').select('legal_name, contact_phone, rating_avg, last_lat, last_lng, last_location_at').eq('id', order.provider_id).single(),
       admin.from('tracking_locations').select('lat, lng, created_at').eq('order_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       order.driver_id
         ? admin.from('provider_members').select('full_name').eq('id', order.driver_id).maybeSingle()
@@ -66,7 +88,13 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
       admin.from('tow_trucks').select('patente').eq('provider_id', order.provider_id).limit(1).maybeSingle(),
     ]);
     provider = p;
-    lastLoc = loc;
+    // Fallback: si todavía no hay puntos de tracking del viaje, usamos la última
+    // ubicación conocida de la grúa (de cuando se puso disponible / se movió).
+    lastLoc =
+      loc ??
+      (p?.last_lat != null && p?.last_lng != null
+        ? { lat: p.last_lat, lng: p.last_lng, created_at: p.last_location_at ?? new Date().toISOString() }
+        : null);
     driverName = drv?.full_name ?? null;
     truckPatente = trk?.patente ?? null;
   }
@@ -197,12 +225,15 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
       )}
 
       {showMap && (
-        <TrackingMap
-          orderId={order.id}
-          origin={order.origin_lat != null && order.origin_lng != null ? { lat: order.origin_lat, lng: order.origin_lng } : null}
-          dest={order.dest_lat != null && order.dest_lng != null ? { lat: order.dest_lat, lng: order.dest_lng } : null}
-          initialProvider={lastLoc ? { lat: lastLoc.lat, lng: lastLoc.lng, at: lastLoc.created_at } : null}
-        />
+        <>
+          <TrackingMap
+            orderId={order.id}
+            origin={order.origin_lat != null && order.origin_lng != null ? { lat: order.origin_lat, lng: order.origin_lng } : null}
+            dest={order.dest_lat != null && order.dest_lng != null ? { lat: order.dest_lat, lng: order.dest_lng } : null}
+            initialProvider={lastLoc ? { lat: lastLoc.lat, lng: lastLoc.lng, at: lastLoc.created_at } : null}
+          />
+          <ShareTrackingButton orderId={order.id} />
+        </>
       )}
 
       {/* Ayuda humana durante estados activos (incl. esperas que solo admin cancela). */}

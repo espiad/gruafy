@@ -32,12 +32,12 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
 
   // Datos del cliente y vehículo solo después del pago.
   let client: { first_name: string | null; last_name: string | null; phone: string | null } | null = null;
-  let vehicle: { brand: string; model: string; year: number | null; patente: string } | null = null;
+  let vehicle: { brand: string; model: string; year: number | null; patente: string; color: string | null } | null = null;
   if (paid) {
     const [{ data: c }, { data: v }] = await Promise.all([
       supabase.from('profiles').select('first_name, last_name, phone').eq('id', order.client_id).single(),
       order.vehicle_id
-        ? supabase.from('vehicles').select('brand, model, year, patente').eq('id', order.vehicle_id).single()
+        ? supabase.from('vehicles').select('brand, model, year, patente, color').eq('id', order.vehicle_id).single()
         : Promise.resolve({ data: null }),
     ]);
     client = c;
@@ -115,7 +115,8 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
           </p>
           {vehicle && (
             <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <Car className="h-4 w-4" /> {vehicle.brand} {vehicle.model} {vehicle.year ?? ''} · patente {vehicle.patente}
+              <Car className="h-4 w-4" />
+              {vehicle.color ? `${vehicle.color} ` : ''}{vehicle.brand} {vehicle.model} {vehicle.year ?? ''} · patente {vehicle.patente}
             </p>
           )}
           {clientPhone && (

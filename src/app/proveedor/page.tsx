@@ -69,9 +69,9 @@ export default async function ProveedorPanel() {
       if (vIds.length) {
         const { data: vs } = await admin
           .from('vehicles')
-          .select('id, brand, model, year, gearbox')
+          .select('id, brand, model, year, gearbox, color')
           .in('id', vIds);
-        offerVehicles = Object.fromEntries((vs ?? []).map((v) => [v.id, { ...v, color: null }]));
+        offerVehicles = Object.fromEntries((vs ?? []).map((v) => [v.id, v]));
       }
     } catch {
       offerOrders = [];

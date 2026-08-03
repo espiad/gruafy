@@ -19,6 +19,7 @@ export const vehicleSchema = z.object({
   gearbox: z.enum(['manual', 'automatic', 'unknown']).default('unknown'),
   gearbox_locked: z.boolean().optional(),
   has_keys: z.boolean().optional(),
+  color: z.string().max(30).optional(),
 });
 export type VehicleInput = z.infer<typeof vehicleSchema>;
 

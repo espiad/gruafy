@@ -2,6 +2,7 @@ import { AppShell } from '@/components/app/app-shell';
 import { getProfile } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import type { NavItem } from '@/components/app/nav-links';
+import { ActiveServiceBar } from '@/features/orders/active-service-bar';
 
 const NAV: NavItem[] = [
   { href: '/cliente', label: 'Inicio', icon: 'home', exact: true },
@@ -21,6 +22,7 @@ export default async function ClienteLayout({ children }: { children: React.Reac
   const name = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null;
   return (
     <AppShell nav={NAV} role="Cliente" userName={name}>
+      <ActiveServiceBar />
       {children}
     </AppShell>
   );

@@ -59,6 +59,7 @@ export async function createOrder(input: CreateOrderInput): Promise<ActionResult
         gearbox: data.vehicle.gearbox,
         gearbox_locked: data.vehicle.gearbox_locked ?? null,
         has_keys: data.vehicle.has_keys ?? null,
+        color: data.vehicle.color ?? null,
       })
       .select('id')
       .single();
