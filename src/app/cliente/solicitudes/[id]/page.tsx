@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { PayButton } from '@/features/payments/pay-button';
+import { SimulatePaymentButton } from '@/features/payments/simulate-payment-button';
+import { serverEnv } from '@/lib/env';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map';
 import { ReviewForm } from '@/features/reviews/review-form';
@@ -102,7 +104,11 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
           </p>
           <div className="mt-4 space-y-3">
             <PaymentCountdown deadline={order.payment_deadline} />
-            <PayButton orderId={order.id} amount={order.amount_upfront} />
+            {serverEnv.mp().accessToken ? (
+              <PayButton orderId={order.id} amount={order.amount_upfront} />
+            ) : (
+              <SimulatePaymentButton orderId={order.id} amount={order.amount_upfront} />
+            )}
           </div>
         </div>
       )}

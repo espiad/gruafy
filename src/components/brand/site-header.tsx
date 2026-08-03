@@ -6,7 +6,7 @@ const NAV = [
   { href: '/como-funciona', label: 'Cómo funciona' },
   { href: '/simulador', label: 'Simulá tu costo' },
   { href: '/ayuda', label: 'Ayuda' },
-  { href: '/registro/proveedor', label: 'Sumá tu grúa' },
+  { href: '/proveedores', label: 'Sumá tu grúa' },
 ];
 
 export function SiteHeader() {

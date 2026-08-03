@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { MapPin, Radar, CheckCircle2, ShieldCheck, Eye, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { GruafyMark } from '@/components/brand/logo';
+import { HeroVisual } from '@/components/brand/hero-visual';
 
 const STEPS = [
   { icon: MapPin, title: 'Pedí', text: 'Marcá dónde estás y a dónde vas. Ves el precio antes de aceptar.' },
@@ -49,10 +49,8 @@ export default function LandingPage() {
             </div>
             <p className="text-sm text-brand-ink/70">Sin esperas eternas. Pagas cuando llega la grua.</p>
           </div>
-          <div className="relative hidden justify-center md:flex">
-            <div className="flex h-72 w-72 items-center justify-center rounded-[2rem] bg-brand-ink shadow-2xl">
-              <GruafyMark className="h-40 w-auto text-brand-orange" />
-            </div>
+          <div className="flex justify-center md:justify-end">
+            <HeroVisual />
           </div>
         </div>
       </section>
