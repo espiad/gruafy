@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Sistema de color gruafy en tokens HSL para light/dark.
+ * Base: naranja #FF9E00, verde #1C3C36, negro verdoso #001910, blanco cálido #F8F7F4.
+ */
+@layer base {
+  :root {
+    --brand-orange: 38 100% 50%; /* #FF9E00 */
+    --brand-green: 168 37% 17%; /* #1C3C36 */
+    --brand-ink: 161 100% 5%; /* #001910 */
+    --brand-cream: 40 24% 97%; /* #F8F7F4 */
+
+    --background: var(--brand-cream);
+    --foreground: var(--brand-ink);
+
+    --card: 0 0% 100%;
+    --card-foreground: var(--brand-ink);
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--brand-ink);
+
+    --primary: var(--brand-orange);
+    --primary-foreground: var(--brand-ink);
+
+    --secondary: var(--brand-green);
+    --secondary-foreground: var(--brand-cream);
+
+    --muted: 40 12% 92%;
+    --muted-foreground: 168 12% 35%;
+
+    --accent: 38 100% 94%;
+    --accent-foreground: var(--brand-green);
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 55% 34%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 100% 45%;
+    --warning-foreground: var(--brand-ink);
+
+    --border: 168 12% 86%;
+    --input: 168 12% 84%;
+    --ring: var(--brand-orange);
+
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: var(--brand-ink);
+    --foreground: var(--brand-cream);
+
+    --card: 168 34% 13%;
+    --card-foreground: var(--brand-cream);
+    --popover: 168 34% 13%;
+    --popover-foreground: var(--brand-cream);
+
+    --primary: var(--brand-orange);
+    --primary-foreground: var(--brand-ink);
+
+    --secondary: 168 30% 24%;
+    --secondary-foreground: var(--brand-cream);
+
+    --muted: 168 24% 18%;
+    --muted-foreground: 40 12% 72%;
+
+    --accent: 168 30% 22%;
+    --accent-foreground: var(--brand-orange);
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 45% 45%;
+    --success-foreground: var(--brand-ink);
+    --warning: 38 100% 55%;
+    --warning-foreground: var(--brand-ink);
+
+    --border: 168 20% 26%;
+    --input: 168 20% 26%;
+    --ring: var(--brand-orange);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04';
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-sans font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  /* Patrón de líneas horizontales del universo visual gruafy. */
+  .brand-lines {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      hsl(var(--brand-ink) / 0.9) 0,
+      hsl(var(--brand-ink) / 0.9) 2px,
+      transparent 2px,
+      transparent 68px
+    );
+  }
+  /* Barras escalonadas verticales (motivo de cierre de la pretesis). */
+  .brand-bars {
+    background-image: repeating-linear-gradient(
+      to right,
+      hsl(var(--brand-orange)) 0,
+      hsl(var(--brand-orange)) 10px,
+      transparent 10px,
+      transparent 22px
+    );
+  }
+  .focus-ring {
+    @apply outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring;
+  }
+}

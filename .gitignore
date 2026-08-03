@@ -1,0 +1,40 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# next
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+
+# env — nunca versionar secretos
+.env
+.env.local
+.env*.local
+.env.development
+.env.production
+
+# testing
+/coverage
+/test-results
+/playwright-report
+/playwright/.cache
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+.vercel
+tsconfig.tsbuildinfo
+
+# supabase local
+/supabase/.temp
+/supabase/.branches
+
+# referencia pesada (documentos fuente extraídos)
+/reference/extracted
+/reference/*.zip
