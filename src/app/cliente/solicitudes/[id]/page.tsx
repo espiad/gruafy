@@ -1,15 +1,18 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, MapPin, Phone, Clock } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { PayButton } from '@/features/payments/pay-button';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map';
 import { ReviewForm } from '@/features/reviews/review-form';
+import { OrderAutoRefresh, SearchingCard, PaymentCountdown } from '@/features/orders/order-live';
 import { formatDateTime, formatARS } from '@/lib/format';
 import { STATE_LABELS, type OrderState } from '@/features/orders/state-machine';
 import type { QuoteBreakdown } from '@/features/pricing/pricing';
+
+const WAITING_STATES: OrderState[] = ['searching_provider', 'awaiting_payment', 'payment_pending'];
 
 const REVEAL_STATES: OrderState[] = [
   'paid',
@@ -83,23 +86,28 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
         <p className="mt-2 text-xs text-muted-foreground">Creada el {formatDateTime(order.created_at)}</p>
       </div>
 
-      {state === 'searching_provider' && (
-        <div className="rounded-2xl border-2 border-warning/40 bg-warning/10 p-5 text-center">
-          <Clock className="mx-auto h-6 w-6 animate-pulse-soft text-warning" />
-          <p className="mt-2 font-medium">Buscando una grúa disponible cerca tuyo…</p>
-          <p className="text-sm text-muted-foreground">Te avisamos apenas una acepte. No se cobra nada todavía.</p>
-        </div>
-      )}
+      {/* Actualiza la vista sola mientras se espera (búsqueda → pago → tracking). */}
+      <OrderAutoRefresh active={WAITING_STATES.includes(state)} />
+
+      {state === 'searching_provider' && <SearchingCard orderId={order.id} />}
 
       {state === 'awaiting_payment' && order.amount_upfront != null && (
         <div className="rounded-2xl border-2 border-brand-orange bg-brand-orange/5 p-5">
           <h2 className="font-semibold">¡Una grúa aceptó! Reservá con el anticipo</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tenés unos minutos para pagar y confirmar la reserva.
+            Pagá el anticipo para confirmar la reserva. El resto se lo abonás al gruero al finalizar.
           </p>
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
+            <PaymentCountdown deadline={order.payment_deadline} />
             <PayButton orderId={order.id} amount={order.amount_upfront} />
           </div>
+        </div>
+      )}
+
+      {state === 'payment_pending' && (
+        <div className="rounded-2xl border-2 border-warning/40 bg-warning/10 p-5 text-center">
+          <p className="font-medium">Estamos confirmando tu pago…</p>
+          <p className="text-sm text-muted-foreground">Puede tardar unos segundos. No cierres esta pantalla.</p>
         </div>
       )}
 
@@ -131,7 +139,7 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
 
       {state === 'completed' && !hasReview && <ReviewForm orderId={order.id} />}
 
-      {pricing && (
+      {pricing && state !== 'searching_provider' && (
         <details className="rounded-2xl border border-border bg-card p-5">
           <summary className="cursor-pointer font-medium">Ver desglose del presupuesto</summary>
           <div className="mt-4">
@@ -140,6 +148,7 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
         </details>
       )}
 
+      {state !== 'searching_provider' && (
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Historial</h2>
         <ol className="space-y-2">
@@ -160,8 +169,9 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
           )}
         </ol>
       </section>
+      )}
 
-      {order.amount_upfront != null && (
+      {order.amount_upfront != null && state !== 'searching_provider' && (
         <p className="text-center text-xs text-muted-foreground">
           Anticipo: {formatARS(order.amount_upfront)}
         </p>

@@ -45,22 +45,39 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
--- Al crear un usuario en auth, crear su profile. Si el email coincide con
--- ADMIN_EMAIL (config del proyecto), se promueve a admin de forma segura.
+-- Al crear un usuario en auth, crear su profile con el rol correcto:
+--  - admin si el email coincide con ADMIN_EMAIL (config del proyecto);
+--  - provider_owner si se registró desde el alta de proveedor (intended_role);
+--  - client en cualquier otro caso.
+-- El rol admin nunca puede pedirse desde metadata: solo por ADMIN_EMAIL.
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
-declare admin_email text;
+declare
+  admin_email text;
+  intended text;
+  final_role user_role;
 begin
   admin_email := nullif(current_setting('app.admin_email', true), '');
+  intended := new.raw_user_meta_data->>'intended_role';
+
+  if admin_email is not null and lower(new.email) = lower(admin_email) then
+    final_role := 'admin';
+  elsif intended = 'provider_owner' then
+    final_role := 'provider_owner';
+  else
+    final_role := 'client';
+  end if;
+
   insert into profiles (id, role, first_name, last_name)
   values (
     new.id,
-    case when admin_email is not null and lower(new.email) = lower(admin_email)
-      then 'admin'::user_role else 'client'::user_role end,
+    final_role,
     coalesce(new.raw_user_meta_data->>'first_name', ''),
     coalesce(new.raw_user_meta_data->>'last_name', '')
   );
-  insert into client_profiles (id) values (new.id) on conflict do nothing;
+  if final_role = 'client' then
+    insert into client_profiles (id) values (new.id) on conflict do nothing;
+  end if;
   return new;
 end $$;
 
