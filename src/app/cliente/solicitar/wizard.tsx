@@ -106,7 +106,7 @@ export function SolicitarWizard({
           ? {
               brand: nv.brand,
               model: nv.model,
-              year: nv.year ? Number(nv.year) : undefined,
+              year: /^\d{4}$/.test(nv.year.trim()) ? Number(nv.year.trim()) : undefined,
               patente: normalizePatente(nv.patente),
               gearbox: vType === 'moto' ? 'unknown' : nv.gearbox,
               has_keys: nv.has_keys,

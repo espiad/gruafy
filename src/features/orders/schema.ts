@@ -4,7 +4,14 @@ import { isValidPatente, normalizePatente } from '@/lib/validation/argentina';
 export const vehicleSchema = z.object({
   brand: z.string().min(1, 'Ingresá la marca'),
   model: z.string().min(1, 'Ingresá el modelo'),
-  year: z.coerce.number().int().min(1950).max(new Date().getFullYear() + 1).optional(),
+  // Año opcional y tolerante: si viene vacío o fuera de rango, se ignora (no bloquea el pedido).
+  year: z.coerce
+    .number()
+    .int()
+    .min(1950)
+    .max(new Date().getFullYear() + 1)
+    .optional()
+    .catch(undefined),
   patente: z
     .string()
     .transform(normalizePatente)
