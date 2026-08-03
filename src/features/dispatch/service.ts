@@ -68,14 +68,21 @@ export async function dispatchOrder(orderId: string): Promise<{ offers: number }
   }));
   await admin.from('provider_offers').insert(rows);
 
-  // Notificación al primer proveedor de la fila.
-  await admin.from('notifications').insert({
-    user_id: ranked[0]!.id, // placeholder: se resuelve al owner en la capa de notificaciones
-    type: 'new_offer',
-    title: 'Nuevo pedido cerca tuyo',
-    body: 'Tenés un servicio para aceptar.',
-    link: '/proveedor',
-  });
+  // Notificación al primer proveedor de la fila (al usuario DUEÑO, no a la cuenta).
+  const { data: owner } = await admin
+    .from('provider_accounts')
+    .select('owner_id')
+    .eq('id', ranked[0]!.id)
+    .single();
+  if (owner?.owner_id) {
+    await admin.from('notifications').insert({
+      user_id: owner.owner_id,
+      type: 'new_offer',
+      title: 'Nuevo pedido cerca tuyo',
+      body: 'Tenés un servicio para aceptar.',
+      link: '/proveedor',
+    });
+  }
 
   return { offers: rows.length };
 }

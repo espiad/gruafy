@@ -21,14 +21,22 @@ async function audit(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return;
-  await supabase.from('admin_audit_logs').insert({
-    admin_id: user.id,
-    action,
-    entity,
-    entity_id: entityId,
-    before: (before ?? null) as never,
-    after: (after ?? null) as never,
-  });
+  // La auditoría se escribe con service role (tabla sin policy de insert por diseño).
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  try {
+    await createAdminClient()
+      .from('admin_audit_logs')
+      .insert({
+        admin_id: user.id,
+        action,
+        entity,
+        entity_id: entityId,
+        before: (before ?? null) as never,
+        after: (after ?? null) as never,
+      });
+  } catch {
+    /* no bloquear la acción principal si falla la auditoría */
+  }
 }
 
 async function ensureAdmin(): Promise<boolean> {
@@ -133,12 +141,14 @@ export async function refundPayment(paymentId: string, reason: string, confirm: 
   if (!confirm) return { ok: false, error: 'Falta confirmación' };
   if (!reason.trim()) return { ok: false, error: 'El motivo es obligatorio' };
 
-  const supabase = await createClient();
-  const { data: payment } = await supabase.from('payments').select('*').eq('id', paymentId).single();
+  // Los pagos/reembolsos se administran con service role (tablas gestionadas por servidor).
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const { data: payment } = await admin.from('payments').select('*').eq('id', paymentId).single();
   if (!payment) return { ok: false, error: 'Pago no encontrado' };
   if (payment.status !== 'approved') return { ok: false, error: 'Solo se reembolsan pagos aprobados' };
 
-  const { data: refund } = await supabase
+  const { data: refund } = await admin
     .from('refunds')
     .insert({ payment_id: paymentId, amount: payment.amount, reason, status: 'pending' })
     .select('id')
@@ -159,11 +169,11 @@ export async function refundPayment(paymentId: string, reason: string, confirm: 
   }
 
   if (refund) {
-    await supabase.from('refunds').update({ status: processed ? 'processed' : 'failed' }).eq('id', refund.id);
+    await admin.from('refunds').update({ status: processed ? 'processed' : 'failed' }).eq('id', refund.id);
   }
-  await supabase.from('payments').update({ status: processed ? 'refunded' : payment.status }).eq('id', paymentId);
-  await supabase.from('service_orders').update({ state: processed ? 'refunded' : 'refund_pending' }).eq('id', payment.order_id);
-  await supabase.from('order_events').insert({
+  await admin.from('payments').update({ status: processed ? 'refunded' : payment.status }).eq('id', paymentId);
+  await admin.from('service_orders').update({ state: processed ? 'refunded' : 'refund_pending' }).eq('id', payment.order_id);
+  await admin.from('order_events').insert({
     order_id: payment.order_id,
     to_state: processed ? 'refunded' : 'refund_pending',
     actor_role: 'admin',

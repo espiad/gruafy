@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, MapPin, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { PayButton } from '@/features/payments/pay-button';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
@@ -108,6 +109,32 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
         <div className="rounded-2xl border-2 border-warning/40 bg-warning/10 p-5 text-center">
           <p className="font-medium">Estamos confirmando tu pago…</p>
           <p className="text-sm text-muted-foreground">Puede tardar unos segundos. No cierres esta pantalla.</p>
+        </div>
+      )}
+
+      {(state === 'no_provider' ||
+        state === 'payment_expired' ||
+        state === 'cancelled_by_client' ||
+        state === 'cancelled_by_provider' ||
+        state === 'cancelled_by_admin') && (
+        <div className="rounded-2xl border border-border bg-card p-6 text-center">
+          <h2 className="font-semibold">
+            {state === 'no_provider'
+              ? 'No encontramos una grúa disponible'
+              : state === 'payment_expired'
+                ? 'Se venció el tiempo de pago'
+                : 'La solicitud fue cancelada'}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {state === 'no_provider'
+              ? 'Por ahora no hay grúas cerca. No se te cobró nada. Probá de nuevo en un rato.'
+              : state === 'payment_expired'
+                ? 'La reserva se liberó porque no llegó el pago a tiempo. Podés volver a pedir.'
+                : 'No se te cobró nada. Cuando quieras, pedí una nueva grúa.'}
+          </p>
+          <Button asChild className="mt-4">
+            <Link href="/cliente/solicitar">Pedir una grúa</Link>
+          </Button>
         </div>
       )}
 
