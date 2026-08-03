@@ -4,6 +4,14 @@ Pendientes que **no bloquean** la demo ni el uso. El recorrido completo funciona
 
 ## Pendiente
 
+### Legales (dar bola siempre)
+- [ ] **T&C explícito en el alta**: checkbox obligatorio con link a `/legal/*` al registrarse (cliente y proveedor), guardando versión + timestamp de aceptación.
+- [ ] **Cliente B2C — DNI** al registrarse (guardar en `client_profiles.dni`).
+- [ ] **Declaración/resguardo**: checkbox simple del cliente para resguardo de la operación y de quien presta el auxilio (no es trámite pesado, solo la aceptación registrada).
+- [ ] **Razón social + CUIT + datos fiscales reales** antes del deploy productivo (hoy con placeholders, candado activo).
+- [ ] **Comprobante/factura**: hoy se piden por WhatsApp (al proveedor y a soporte). A futuro, emisión formal si corresponde.
+
+
 - [ ] **E2E Playwright** — pruebas automáticas del recorrido completo (visitante → pedido → aceptación
       → pago de prueba → tracking → cierre → reseña; y acceso no autorizado). Recorridos definidos en
       `docs/PRUEBAS.md`. **Requiere credenciales de prueba de Supabase + Mercado Pago** para correr.

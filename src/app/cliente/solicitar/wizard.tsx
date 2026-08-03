@@ -61,6 +61,7 @@ export function SolicitarWizard({
   const [wheelState, setWheelState] = useState<'yes' | 'no' | 'unsure' | null>(null);
   const [dollyHelp, setDollyHelp] = useState(false);
   const [terms, setTerms] = useState(false);
+  const [declared, setDeclared] = useState(false);
 
   // Traduce la respuesta simple del usuario a dollys/ruedas para el presupuesto.
   function setWheels_(state: 'yes' | 'no' | 'unsure') {
@@ -107,6 +108,7 @@ export function SolicitarWizard({
 
   function submit() {
     if (!terms) return setError('Tenés que aceptar los términos para continuar');
+    if (!declared) return setError('Confirmá la declaración para continuar');
     if (!origin || !dest) return setError('Falta la ubicación');
     const dist = Math.round(distanceMeters);
     if (!Number.isFinite(dist) || dist <= 0) {
@@ -378,7 +380,11 @@ export function SolicitarWizard({
             </div>
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" className="mt-1 accent-brand-orange" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-              Acepto los términos y el presupuesto. Entiendo que primero una grúa acepta y después pago el anticipo.
+              Acepto los <a href="/legal/terminos-clientes" target="_blank" className="underline">términos</a> y el presupuesto. Entiendo que primero una grúa acepta y después pago el anticipo.
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-1 accent-brand-orange" checked={declared} onChange={(e) => setDeclared(e.target.checked)} />
+              Declaro que los datos son verídicos y que solicito el servicio de buena fe, resguardando la seguridad de quien me asiste.
             </label>
           </div>
         )}

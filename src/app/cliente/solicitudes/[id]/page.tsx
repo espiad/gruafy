@@ -11,7 +11,10 @@ import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map';
 import { ReviewForm } from '@/features/reviews/review-form';
 import { OrderAutoRefresh, SearchingCard, PaymentCountdown } from '@/features/orders/order-live';
+import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
+import { InvoiceButtons } from '@/features/orders/invoice-buttons';
+import { haversineMeters } from '@/lib/geo/distance';
 import { formatDateTime, formatARS } from '@/lib/format';
 import { STATE_LABELS, isTerminal, type OrderState } from '@/features/orders/state-machine';
 import type { QuoteBreakdown } from '@/features/pricing/pricing';
@@ -68,6 +71,13 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
     truckPatente = trk?.patente ?? null;
   }
 
+  // ETA aproximado a la recogida mientras la grúa va en camino (última posición → A).
+  let etaMin: number | null = null;
+  if (state === 'provider_en_route' && lastLoc && order.origin_lat != null && order.origin_lng != null) {
+    const meters = haversineMeters({ lat: lastLoc.lat, lng: lastLoc.lng }, { lat: order.origin_lat, lng: order.origin_lng });
+    etaMin = Math.max(1, Math.round(meters / 1000 / 30 * 60)); // ~30 km/h
+  }
+
   let hasReview = false;
   if (state === 'completed') {
     const { count } = await supabase
@@ -101,7 +111,9 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
       </div>
 
       {/* Actualiza la vista sola en todo estado activo (búsqueda → pago → tracking → cierre). */}
-      <OrderAutoRefresh active={!isTerminal(state)} />
+      <OrderAutoRefresh active={!isTerminal(state)} intervalMs={3000} />
+
+      {state !== 'searching_provider' && <StatusHero state={state} role="cliente" etaMin={etaMin} />}
 
       {state === 'searching_provider' && (
         <SearchingCard orderId={order.id} deadline={order.offer_deadline} />
@@ -196,6 +208,16 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
       {/* Ayuda humana durante estados activos (incl. esperas que solo admin cancela). */}
       {!isTerminal(state) && state !== 'searching_provider' && (
         <SupportButton role="cliente" orderId={order.id} stateLabel={STATE_LABELS[state]} />
+      )}
+
+      {state === 'completed' && (
+        <InvoiceButtons
+          orderId={order.id}
+          providerPhone={provider?.contact_phone ?? null}
+          providerName={provider?.legal_name ?? null}
+          amountUpfront={order.amount_upfront}
+          amountService={pricing?.saldo_estimado_gruero ?? null}
+        />
       )}
 
       {state === 'completed' && !hasReview && <ReviewForm orderId={order.id} />}

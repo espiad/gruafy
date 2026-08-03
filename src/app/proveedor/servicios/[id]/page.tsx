@@ -7,6 +7,7 @@ import { ServiceActionsPanel } from '@/features/providers/service-actions-panel'
 import { ExtraForm } from '@/features/providers/extra-form';
 import { LocationSender } from '@/features/tracking/location-sender';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
+import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
 import { getPlatformSettings } from '@/features/pricing/settings';
 import { formatARS, formatDistance } from '@/lib/format';
@@ -71,12 +72,7 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
         <StatusBadge state={state} />
       </div>
 
-      {state === 'awaiting_payment' && (
-        <div className="rounded-2xl border-2 border-warning/40 bg-warning/10 p-5 text-center">
-          <p className="font-medium">Esperando el pago del cliente</p>
-          <p className="text-sm text-muted-foreground">No inicies el recorrido hasta confirmar el pago. La pantalla se actualiza sola.</p>
-        </div>
-      )}
+      <StatusHero state={state} role="gruero" />
 
       {/* Ruta */}
       <div className="rounded-2xl border border-border bg-card p-5">
