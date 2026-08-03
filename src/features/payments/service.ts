@@ -121,8 +121,9 @@ export async function reconcilePayment(mpPaymentId: string): Promise<void> {
     payment_method_id: payment.payment_method_id,
   };
 
+  // Registro del pago (idempotente por mp_payment_id). No cortamos acá: la
+  // idempotencia real es por ESTADO de la orden (abajo), con update guardado.
   if (existing) {
-    if (existing.status === status) return; // ya procesado, idempotente
     await admin
       .from('payments')
       .update({ status, normalized, live_mode: Boolean(payment.live_mode) })
@@ -141,27 +142,47 @@ export async function reconcilePayment(mpPaymentId: string): Promise<void> {
     });
   }
 
-  // Solo aprobamos la orden si el pago está aprobado, con importe y moneda correctos,
-  // y la orden todavía está esperando/pendiente de pago.
-  if (
-    status === 'approved' &&
-    amountOk &&
-    currencyOk &&
-    (order.state === 'awaiting_payment' || order.state === 'payment_pending')
-  ) {
-    await admin
+  // Aprobado con importe y moneda correctos → paid. Update GUARDADO por estado:
+  // solo transiciona si la orden sigue esperando pago (idempotente, y no pisa una
+  // cancelación/expiración que haya entrado en la carrera).
+  if (status === 'approved' && amountOk && currencyOk) {
+    const { data: updated } = await admin
       .from('service_orders')
       .update({ state: 'paid', paid_at: new Date().toISOString() })
-      .eq('id', orderId);
-    await admin.from('order_events').insert({
-      order_id: orderId,
-      from_state: order.state,
-      to_state: 'paid',
-      actor_role: null,
-      event: 'Pago confirmado',
-      meta: { mp_payment_id: String(mpPaymentId) },
-    });
-  } else if (status === 'pending' && order.state === 'awaiting_payment') {
-    await admin.from('service_orders').update({ state: 'payment_pending' }).eq('id', orderId);
+      .eq('id', orderId)
+      .in('state', ['awaiting_payment', 'payment_pending'])
+      .select('id');
+    if (updated && updated.length > 0) {
+      await admin.from('order_events').insert({
+        order_id: orderId,
+        to_state: 'paid',
+        actor_role: null,
+        event: 'Pago confirmado',
+        meta: { mp_payment_id: String(mpPaymentId) },
+      });
+    }
+  } else if (status === 'pending') {
+    await admin
+      .from('service_orders')
+      .update({ state: 'payment_pending' })
+      .eq('id', orderId)
+      .eq('state', 'awaiting_payment');
+  } else if (status === 'refunded' || status === 'cancelled') {
+    // Contracargo/reembolso originado en MP sobre una orden ya pagada.
+    const { data: updated } = await admin
+      .from('service_orders')
+      .update({ state: 'refund_pending' })
+      .eq('id', orderId)
+      .eq('state', 'paid')
+      .select('id');
+    if (updated && updated.length > 0) {
+      await admin.from('order_events').insert({
+        order_id: orderId,
+        to_state: 'refund_pending',
+        actor_role: null,
+        event: 'Reembolso/contracargo notificado por Mercado Pago',
+        meta: { mp_payment_id: String(mpPaymentId) },
+      });
+    }
   }
 }

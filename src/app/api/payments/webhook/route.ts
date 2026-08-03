@@ -35,10 +35,12 @@ export async function POST(request: NextRequest) {
   try {
     await reconcilePayment(dataId);
   } catch (err) {
-    // No exponemos detalles; devolvemos 200 para no entrar en loop de reintentos
-    // salvo error transitorio real (que MP reintenta por timeout).
-    console.error('[mp-webhook] error reconciliando pago', err instanceof Error ? err.message : err);
-    return NextResponse.json({ received: true, deferred: true }, { status: 200 });
+    // Ante un fallo (posiblemente transitorio), devolvemos 500 para que Mercado
+    // Pago REINTENTE. reconcilePayment es idempotente, así que reintentar es seguro.
+    // Si respondiéramos 200, MP lo daría por procesado y un pago aprobado podría
+    // quedar sin confirmar la orden.
+    console.error('[mp-webhook] error reconciliando pago', dataId, err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'reintentar' }, { status: 500 });
   }
 
   return NextResponse.json({ received: true }, { status: 200 });

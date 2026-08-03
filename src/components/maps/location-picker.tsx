@@ -13,6 +13,7 @@ import {
   AMBA_BOUNDS,
   type GeoPoint,
 } from '@/lib/geoapify';
+import { haversineMeters } from '@/lib/geo/distance';
 import { formatDistance } from '@/lib/format';
 
 function mapStyle(): string | maplibregl.StyleSpecification {
@@ -196,6 +197,7 @@ export function LocationPicker({ origin, dest, onOrigin, onDest, onDistance }: P
   const [locating, setLocating] = useState(false);
   const [routing, setRouting] = useState(false);
   const [meters, setMeters] = useState<number | null>(null);
+  const [estimated, setEstimated] = useState(false);
   const [warn, setWarn] = useState<string | null>(null);
 
   const onOriginRef = useRef(onOrigin);
@@ -285,13 +287,21 @@ export function LocationPicker({ origin, dest, onOrigin, onDest, onDistance }: P
       if (cancelled) return;
       setRouting(false);
       if (r) {
+        setEstimated(false);
         setMeters(r.distanceMeters);
         onDistance(r.distanceMeters, r.durationSeconds);
         // Dibuja la línea de ruta si el mapa está listo.
         drawRoute(origin, dest);
       } else {
-        setMeters(null);
-        onDistance(null, null);
+        // Geoapify no respondió: NO bloqueamos el pedido. Estimamos por distancia
+        // en línea recta × 1.3 (factor de callejeo típico) y ~30 km/h de promedio.
+        const straight = haversineMeters(origin, dest);
+        const est = Math.round(straight * 1.3);
+        const seconds = Math.round((est / 1000 / 30) * 3600);
+        setEstimated(true);
+        setMeters(est);
+        onDistance(est, seconds);
+        drawRoute(origin, dest);
       }
     }
     void run();
@@ -418,6 +428,11 @@ export function LocationPicker({ origin, dest, onOrigin, onDest, onDistance }: P
       {meters != null && (
         <p className="rounded-lg bg-brand-green/5 p-3 text-sm">
           Recorrido estimado: <strong>{formatDistance(meters)}</strong>
+          {estimated && (
+            <span className="ml-1 text-xs text-muted-foreground">
+              (aproximado; se ajusta al confirmar)
+            </span>
+          )}
         </p>
       )}
     </div>

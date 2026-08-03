@@ -16,7 +16,7 @@ interface Driver {
 interface Props {
   orderId: string;
   expiresAt: string;
-  originAddress: string | null;
+  originZone: string;
   destAddress: string | null;
   distanceMeters: number | null;
   dollys: number;
@@ -29,9 +29,10 @@ interface Props {
 }
 
 /**
- * Tarjeta de oferta (broadcast). Le damos al gruero TODOS los datos del viaje para
- * decidir: recogida, destino, distancia, condiciones, vehículo y monto. Antes de
- * aceptar elige qué conductor maneja (para ofrecerle los datos correctos al cliente).
+ * Tarjeta de oferta (broadcast). Le damos al gruero los datos para decidir: ZONA de
+ * recogida (no el domicilio exacto, que es dato sensible de una persona varada),
+ * destino, distancia, condiciones, vehículo y monto. La dirección exacta y el
+ * contacto del cliente se revelan recién cuando acepta y el cliente paga.
  */
 export function OfferCard(props: Props) {
   const router = useRouter();
@@ -85,11 +86,11 @@ export function OfferCard(props: Props) {
         )}
       </div>
 
-      {/* Recogida y destino, claros, para decidir (zona, seguridad, etc.) */}
+      {/* Zona de recogida (aprox.) y destino, para decidir sin exponer el domicilio. */}
       <div className="mt-3 space-y-2 text-sm">
         <p className="flex items-start gap-2">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-green" />
-          <span><strong>Recogida:</strong> {props.originAddress ?? '—'}</span>
+          <span><strong>Zona de recogida:</strong> {props.originZone}</span>
         </p>
         <p className="flex items-start gap-2">
           <Flag className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />

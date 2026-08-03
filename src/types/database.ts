@@ -333,6 +333,10 @@ export type Database = {
         Returns: boolean;
       };
       is_admin: { Args: { uid?: string }; Returns: boolean };
+      sweep_expired_orders: {
+        Args: Record<string, never>;
+        Returns: { search_closed: number; payment_expired: number }[];
+      };
     };
     Enums: {
       user_role: UserRole;

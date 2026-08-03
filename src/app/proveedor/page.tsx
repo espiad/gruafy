@@ -7,6 +7,7 @@ import { OfferCard } from '@/features/providers/offer-card';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { formatARS } from '@/lib/format';
+import { zoneFromAddress } from '@/lib/geo/distance';
 import { isTerminal, type OrderState } from '@/features/orders/state-machine';
 
 export default async function ProveedorPanel() {
@@ -130,7 +131,7 @@ export default async function ProveedorPanel() {
                   key={offer.id}
                   orderId={offer.order_id}
                   expiresAt={offer.expires_at}
-                  originAddress={order.origin_address}
+                  originZone={zoneFromAddress(order.origin_address)}
                   destAddress={order.dest_address}
                   distanceMeters={order.distance_meters}
                   dollys={order.dollys}

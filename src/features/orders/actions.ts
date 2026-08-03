@@ -118,22 +118,34 @@ export async function createOrder(input: CreateOrderInput): Promise<ActionResult
 /** Cancela una orden del cliente (solo en estados cancelables). */
 export async function cancelOrderByClient(orderId: string, reason?: string): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
   const { data: order } = await supabase
     .from('service_orders')
     .select('id, state, client_id')
     .eq('id', orderId)
     .single();
-  if (!order) return { ok: false, error: 'Orden no encontrada' };
+  if (!order || order.client_id !== user.id) return { ok: false, error: 'Orden no encontrada' };
 
   const cancelable = ['searching_provider', 'provider_reserved', 'awaiting_payment'];
   if (!cancelable.includes(order.state)) {
     return { ok: false, error: 'La solicitud ya no se puede cancelar' };
   }
 
-  await supabase
+  // Update guardado por estado: si en la carrera la orden avanzó (p. ej. pasó a
+  // paid), no la pisamos. Solo registramos el evento si realmente cancelamos.
+  const { data: updated } = await supabase
     .from('service_orders')
     .update({ state: 'cancelled_by_client', cancellation_reason: reason ?? 'Cancelada por el cliente' })
-    .eq('id', orderId);
+    .eq('id', orderId)
+    .eq('state', order.state)
+    .select('id');
+  if (!updated || updated.length === 0) {
+    return { ok: false, error: 'La solicitud cambió de estado. Actualizá la pantalla.' };
+  }
   await supabase.from('order_events').insert({
     order_id: orderId,
     from_state: order.state,
@@ -169,18 +181,23 @@ export async function resolveSearchTimeout(orderId: string): Promise<ActionResul
   }
 
   // Solo pasa a no_provider si sigue en búsqueda (evita pisar una aceptación al límite).
-  await supabase
+  const { data: closed } = await supabase
     .from('service_orders')
     .update({ state: 'no_provider' })
     .eq('id', orderId)
-    .eq('state', 'searching_provider');
-  await supabase.from('order_events').insert({
-    order_id: orderId,
-    from_state: 'searching_provider',
-    to_state: 'no_provider',
-    actor_role: 'client',
-    event: 'Sin grúas disponibles',
-  });
+    .eq('state', 'searching_provider')
+    .select('id');
+  // Solo registramos el evento si de verdad cerramos la búsqueda (no si una grúa
+  // aceptó en el mismo instante y la orden ya avanzó).
+  if (closed && closed.length > 0) {
+    await supabase.from('order_events').insert({
+      order_id: orderId,
+      from_state: 'searching_provider',
+      to_state: 'no_provider',
+      actor_role: 'client',
+      event: 'Sin grúas disponibles',
+    });
+  }
   revalidatePath(`/cliente/solicitudes/${orderId}`);
   return { ok: true, orderId };
 }
