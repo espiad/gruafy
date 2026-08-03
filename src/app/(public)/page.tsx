@@ -41,10 +41,10 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg" variant="secondary">
-                <Link href="/simulador">Pedir grua<ArrowRight /></Link>
+                <Link href="/cliente/solicitar">Pedir una grúa<ArrowRight /></Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="border-brand-ink/30">
-                <Link href="/registro">Simula tu costo</Link>
+                <Link href="/simulador">Simulá tu costo</Link>
               </Button>
             </div>
             <p className="text-sm text-brand-ink/70">Sin esperas eternas. Pagas cuando llega la grua.</p>
