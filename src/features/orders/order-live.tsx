@@ -126,6 +126,54 @@ export function SearchingCard({
   );
 }
 
+/**
+ * Botón discreto para soltar la reserva antes de pagar (sin quedar atrapado en la
+ * pantalla de pago). Pide confirmación porque libera la grúa que ya te aceptó.
+ */
+export function CancelAwaitingPayment({ orderId }: { orderId: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [confirm, setConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function cancel() {
+    setError(null);
+    start(async () => {
+      const res = await cancelOrderByClient(orderId, 'El cliente no confirmó el pago');
+      if (res.ok) router.refresh();
+      else {
+        setError(res.error ?? 'No se pudo cancelar');
+        router.refresh();
+      }
+    });
+  }
+
+  if (!confirm) {
+    return (
+      <button
+        onClick={() => setConfirm(true)}
+        className="focus-ring mx-auto block rounded-md text-xs text-muted-foreground underline hover:text-destructive"
+      >
+        No quiero seguir, cancelar la reserva
+      </button>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <p className="text-xs text-muted-foreground">Se libera la grúa que te aceptó. ¿Confirmás?</p>
+      <div className="flex gap-2">
+        <Button variant="destructive" size="sm" onClick={cancel} disabled={pending}>
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} Sí, cancelar
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setConfirm(false)} disabled={pending}>
+          Seguir con el pago
+        </Button>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 /** Cuenta regresiva del tiempo de pago (mm:ss) para el bloque de pago. */
 export function PaymentCountdown({ deadline }: { deadline: string | null }) {
   const [left, setLeft] = useState<number | null>(null);

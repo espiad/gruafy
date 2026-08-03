@@ -10,7 +10,8 @@ import { serverEnv } from '@/lib/env';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map';
 import { ReviewForm } from '@/features/reviews/review-form';
-import { OrderAutoRefresh, SearchingCard, PaymentCountdown } from '@/features/orders/order-live';
+import { OrderAutoRefresh, SearchingCard, PaymentCountdown, CancelAwaitingPayment } from '@/features/orders/order-live';
+import { Star, ShieldCheck } from 'lucide-react';
 import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
 import { InvoiceButtons } from '@/features/orders/invoice-buttons';
@@ -99,6 +100,27 @@ export default async function SolicitudDetalle({
     truckPatente = trk?.patente ?? null;
   }
 
+  // Confianza pre-pago: antes de que el cliente pague ya sabemos qué grúa aceptó.
+  // Le mostramos reputación y patente (para decidir con confianza), pero NO el
+  // teléfono ni el contacto: eso se revela recién cuando paga.
+  let prepay: { legal_name: string; rating_avg: number; rating_count: number; truckPatente: string | null } | null = null;
+  if ((state === 'awaiting_payment' || state === 'payment_pending') && order.provider_id) {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const [{ data: p }, { data: trk }] = await Promise.all([
+      admin.from('provider_accounts').select('legal_name, rating_avg, rating_count').eq('id', order.provider_id).single(),
+      admin.from('tow_trucks').select('patente').eq('provider_id', order.provider_id).limit(1).maybeSingle(),
+    ]);
+    if (p) {
+      prepay = {
+        legal_name: p.legal_name,
+        rating_avg: p.rating_avg,
+        rating_count: p.rating_count,
+        truckPatente: trk?.patente ?? null,
+      };
+    }
+  }
+
   // ETA aproximado a la recogida mientras la grúa va en camino (última posición → A).
   let etaMin: number | null = null;
   if (state === 'provider_en_route' && lastLoc && order.origin_lat != null && order.origin_lng != null) {
@@ -147,9 +169,38 @@ export default async function SolicitudDetalle({
         <SearchingCard orderId={order.id} deadline={order.offer_deadline} />
       )}
 
+      {/* Quién te va a asistir: reputación y patente, para que pagues con confianza. */}
+      {prepay && (
+        <div className="rounded-2xl border border-success/40 bg-success/5 p-5">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-success" />
+            <h2 className="font-semibold">Una grúa te aceptó</h2>
+          </div>
+          <p className="mt-2 text-sm">
+            <strong>{prepay.legal_name}</strong>
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            {prepay.rating_count > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 fill-brand-orange text-brand-orange" />
+                {prepay.rating_avg.toFixed(1)} · {prepay.rating_count} servicio{prepay.rating_count === 1 ? '' : 's'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 text-brand-orange" /> Grúa nueva en la red
+              </span>
+            )}
+            {prepay.truckPatente && <span>· Patente {prepay.truckPatente}</span>}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Vas a ver su ubicación en vivo y sus datos de contacto apenas confirmes el anticipo.
+          </p>
+        </div>
+      )}
+
       {state === 'awaiting_payment' && order.amount_upfront != null && (
         <div className="rounded-2xl border-2 border-brand-orange bg-brand-orange/5 p-5">
-          <h2 className="font-semibold">¡Una grúa aceptó! Reservá con el anticipo</h2>
+          <h2 className="font-semibold">Reservá con el anticipo</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Pagá el anticipo para confirmar la reserva. El resto se lo abonás al gruero al finalizar.
           </p>
@@ -160,6 +211,7 @@ export default async function SolicitudDetalle({
             ) : (
               <SimulatePaymentButton orderId={order.id} amount={order.amount_upfront} />
             )}
+            <CancelAwaitingPayment orderId={order.id} />
           </div>
         </div>
       )}

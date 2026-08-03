@@ -6,7 +6,7 @@ import { HeroVisual } from '@/components/brand/hero-visual';
 const STEPS = [
   { icon: MapPin, title: 'Pedí', text: 'Marcá dónde estás y a dónde vas. Ves el precio antes de aceptar.' },
   { icon: Radar, title: 'Rastreá', text: 'Una grúa acepta y la seguís en vivo en el mapa. Sabés quién viene y cuándo llega.' },
-  { icon: CheckCircle2, title: 'Pagas', text: 'Cuando termina el auxilio, cancelas el total pendiente. Solo pagas un pequeño porcentaje para comenzar.' },
+  { icon: CheckCircle2, title: 'Pagás', text: 'Cuando termina el auxilio, cancelás el total pendiente. Solo pagás un pequeño porcentaje para comenzar.' },
 ];
 
 const ADVANTAGES = [
@@ -47,7 +47,7 @@ export default function LandingPage() {
                 <Link href="/simulador">Simulá tu costo</Link>
               </Button>
             </div>
-            <p className="text-sm text-brand-ink/70">Sin esperas eternas. Pagas cuando llega la grua.</p>
+            <p className="text-sm text-brand-ink/70">Sin esperas eternas. Pagás cuando llega la grúa.</p>
           </div>
           <div className="flex justify-center md:justify-end">
             <HeroVisual />
@@ -59,7 +59,7 @@ export default function LandingPage() {
       <section className="container py-20">
         <h2 className="text-center text-3xl font-semibold">Tu auxilio en tres pasos</h2>
         <p className="mx-auto mt-2 max-w-xl text-center text-muted-foreground">
-          Pensado para el momento de estrés: encontramos tu grua en 5'.
+          Pensado para el momento de estrés: encontramos tu grúa en minutos.
         </p>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {STEPS.map((s, i) => (
