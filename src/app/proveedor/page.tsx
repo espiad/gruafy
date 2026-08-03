@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getPlatformSettings } from '@/features/pricing/settings';
 import { getProfile } from '@/lib/auth/session';
 import { AvailabilityToggle } from '@/features/providers/availability-toggle';
 import { OfferCard } from '@/features/providers/offer-card';
+import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { formatARS } from '@/lib/format';
 import { isTerminal, type OrderState } from '@/features/orders/state-machine';
@@ -20,8 +20,6 @@ export default async function ProveedorPanel() {
 
   if (!provider) redirect('/proveedor/onboarding');
   if (provider.status !== 'approved') redirect('/proveedor/estado-solicitud');
-
-  const settings = await getPlatformSettings();
 
   // Servicio activo asignado a este proveedor.
   const { data: activeOrders } = await supabase
@@ -50,6 +48,8 @@ export default async function ProveedorPanel() {
 
   return (
     <div className="space-y-8">
+      {/* Mientras está disponible, refresca para que aparezcan pedidos nuevos. */}
+      <OrderAutoRefresh active={provider.is_available} intervalMs={5000} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl">{provider.legal_name}</h1>
@@ -89,9 +89,7 @@ export default async function ProveedorPanel() {
                 <OfferCard
                   key={offer.id}
                   orderId={offer.order_id}
-                  rank={offer.rank}
-                  createdAt={offer.created_at}
-                  offerSeconds={settings.oferta_proveedor_segundos}
+                  expiresAt={offer.expires_at}
                   destAddress={order.dest_address}
                   distanceMeters={order.distance_meters}
                   dollys={order.dollys}

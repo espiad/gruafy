@@ -16,7 +16,7 @@ insert into platform_settings (id, version, values) values (
     'iva_fee_mp', 0.21,
     'km_redondeo', 1,
     'max_pasajeros', 2,
-    'oferta_proveedor_segundos', 60,
+    'oferta_proveedor_segundos', 120,
     'pago_cliente_segundos', 180,
     'radio_busqueda_km', 25,
     'extras_categorias', jsonb_build_array('peajes','espera','dollys_no_informados','ruedas_bloqueadas','condicion_distinta','acceso_especial'),

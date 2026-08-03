@@ -26,26 +26,24 @@ export function AvailabilityToggle({ initial }: { initial: boolean }) {
       });
       return;
     }
-    // Activar: pedir ubicación primero.
-    if (!('geolocation' in navigator)) {
+    // Activar. La ubicación es opcional (mejora el tracking del cliente), pero no
+    // bloquea: aunque el GPS falle o se rechace, quedás disponible para recibir pedidos.
+    const activate = (lat?: number, lng?: number) =>
       start(async () => {
-        const res = await setAvailability(true);
-        if (res.ok) setOn(true);
-        else setError(res.error ?? 'Error');
+        const res = await setAvailability(true, lat, lng);
+        if (res.ok) {
+          setOn(true);
+          router.refresh();
+        } else setError(res.error ?? 'Error');
       });
+
+    if (!('geolocation' in navigator)) {
+      activate();
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        start(async () => {
-          const res = await setAvailability(true, pos.coords.latitude, pos.coords.longitude);
-          if (res.ok) {
-            setOn(true);
-            router.refresh();
-          } else setError(res.error ?? 'Error');
-        });
-      },
-      () => setError('Necesitamos tu ubicación para recibir pedidos cercanos.'),
+      (pos) => activate(pos.coords.latitude, pos.coords.longitude),
+      () => activate(), // sin ubicación: igual disponible
       { enableHighAccuracy: true, timeout: 8000 },
     );
   }

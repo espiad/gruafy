@@ -14,7 +14,7 @@ export interface PlatformValues extends PricingSettings {
 export const DEFAULT_PLATFORM: PlatformValues = {
   ...DEFAULT_PRICING,
   max_pasajeros: 2,
-  oferta_proveedor_segundos: 60,
+  oferta_proveedor_segundos: 120,
   pago_cliente_segundos: 180,
   radio_busqueda_km: 25,
   extras_categorias: [

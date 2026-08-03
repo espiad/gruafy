@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cancelOrderByClient } from './actions';
+import { cancelOrderByClient, resolveSearchTimeout } from './actions';
 
 /**
  * Refresca la página cada pocos segundos mientras la orden está en un estado de
@@ -21,19 +21,45 @@ export function OrderAutoRefresh({ active, intervalMs = 4000 }: { active: boolea
 }
 
 /**
- * Pantalla de búsqueda: loader enfocado, tiempo transcurrido y opción de cancelar.
- * No pasa nada más hasta que una grúa acepta (y ahí aparece el pago).
+ * Pantalla de búsqueda con countdown: el pedido se ofrece a todas las grúas a la
+ * vez y hay una ventana (por defecto 2 min) para que una acepte. Anillo de progreso,
+ * cuenta regresiva y cancelación. Al llegar a cero sin aceptación, cierra la búsqueda.
  */
-export function SearchingCard({ orderId }: { orderId: string }) {
+export function SearchingCard({
+  orderId,
+  deadline,
+  windowSeconds = 120,
+}: {
+  orderId: string;
+  deadline: string | null;
+  windowSeconds?: number;
+}) {
   const router = useRouter();
-  const [elapsed, setElapsed] = useState(0);
+  const [left, setLeft] = useState(windowSeconds);
   const [pending, start] = useTransition();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    const target = deadline ? new Date(deadline).getTime() : Date.now() + windowSeconds * 1000;
+    const tick = () => {
+      const secs = Math.max(0, Math.round((target - Date.now()) / 1000));
+      setLeft(secs);
+      if (secs <= 0) setTimedOut(true);
+    };
+    tick();
+    const id = setInterval(tick, 500);
     return () => clearInterval(id);
-  }, []);
+  }, [deadline, windowSeconds]);
+
+  // Cuando se agota el tiempo, cerramos la búsqueda (si nadie aceptó).
+  useEffect(() => {
+    if (!timedOut) return;
+    (async () => {
+      await resolveSearchTimeout(orderId);
+      router.refresh();
+    })();
+  }, [timedOut, orderId, router]);
 
   function cancel() {
     start(async () => {
@@ -42,22 +68,41 @@ export function SearchingCard({ orderId }: { orderId: string }) {
     });
   }
 
-  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
-  const ss = String(elapsed % 60).padStart(2, '0');
+  const mm = String(Math.floor(left / 60)).padStart(2, '0');
+  const ss = String(left % 60).padStart(2, '0');
+  const pct = Math.max(0, Math.min(100, (left / windowSeconds) * 100));
+  const R = 42;
+  const C = 2 * Math.PI * R;
 
   return (
     <div className="rounded-3xl border-2 border-brand-orange bg-brand-orange/5 p-8 text-center">
-      <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
-        <span className="absolute inset-0 animate-ping rounded-full bg-brand-orange/30" />
-        <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand-orange">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-ink" />
-        </span>
+      <div className="relative mx-auto h-28 w-28">
+        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+          <circle cx="50" cy="50" r={R} fill="none" stroke="currentColor" strokeWidth="7" className="text-brand-orange/20" />
+          <circle
+            cx="50"
+            cy="50"
+            r={R}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="7"
+            strokeLinecap="round"
+            className="text-brand-orange transition-all duration-500"
+            strokeDasharray={C}
+            strokeDashoffset={C - (pct / 100) * C}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-mono text-2xl font-semibold tabular-nums text-brand-green">{mm}:{ss}</span>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">restante</span>
+        </div>
       </div>
-      <h2 className="mt-5 font-display text-xl text-brand-green">Buscando una grúa cerca tuyo…</h2>
+
+      <h2 className="mt-5 font-display text-xl text-brand-green">Buscando tu grúa…</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Te avisamos apenas una acepte. No cierres esta pantalla. Todavía no se cobra nada.
+        Les avisamos a las grúas disponibles. La primera que acepta te toma el viaje. No cierres esta
+        pantalla; todavía no se cobra nada.
       </p>
-      <p className="mt-3 font-mono text-2xl tabular-nums text-brand-green">{mm}:{ss}</p>
 
       {!confirmCancel ? (
         <button

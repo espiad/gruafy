@@ -90,7 +90,9 @@ export default async function SolicitudDetalle({ params }: { params: Promise<{ i
       {/* Actualiza la vista sola mientras se espera (búsqueda → pago → tracking). */}
       <OrderAutoRefresh active={WAITING_STATES.includes(state)} />
 
-      {state === 'searching_provider' && <SearchingCard orderId={order.id} />}
+      {state === 'searching_provider' && (
+        <SearchingCard orderId={order.id} deadline={order.offer_deadline} />
+      )}
 
       {state === 'awaiting_payment' && order.amount_upfront != null && (
         <div className="rounded-2xl border-2 border-brand-orange bg-brand-orange/5 p-5">

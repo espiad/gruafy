@@ -9,9 +9,7 @@ import { formatARS, formatDistance } from '@/lib/format';
 
 interface Props {
   orderId: string;
-  rank: number;
-  createdAt: string;
-  offerSeconds: number;
+  expiresAt: string;
   destAddress: string | null;
   distanceMeters: number | null;
   dollys: number;
@@ -20,9 +18,9 @@ interface Props {
 }
 
 /**
- * Tarjeta de oferta con cuenta regresiva real. La ventana del proveedor va de
- * rank*offerSeconds a (rank+1)*offerSeconds desde la creación de la oferta.
+ * Tarjeta de oferta con cuenta regresiva a la expiración común (broadcast).
  * Muestra zona/destino y monto estimado a cobrar; nunca la dirección exacta del A.
+ * El primero que acepta se lo lleva (aceptación atómica en el servidor).
  */
 export function OfferCard(props: Props) {
   const router = useRouter();
@@ -31,8 +29,7 @@ export function OfferCard(props: Props) {
   const [remaining, setRemaining] = useState<number>(0);
 
   useEffect(() => {
-    const startMs = new Date(props.createdAt).getTime();
-    const to = startMs + (props.rank + 1) * props.offerSeconds * 1000;
+    const to = new Date(props.expiresAt).getTime();
     const tick = () => {
       const r = Math.max(0, Math.round((to - Date.now()) / 1000));
       setRemaining(r);
@@ -41,7 +38,7 @@ export function OfferCard(props: Props) {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [props.createdAt, props.rank, props.offerSeconds, router]);
+  }, [props.expiresAt, router]);
 
   function accept() {
     setError(null);
@@ -65,8 +62,9 @@ export function OfferCard(props: Props) {
   return (
     <div className="rounded-2xl border-2 border-brand-orange bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1 rounded-full bg-brand-orange/15 px-2.5 py-1 text-xs font-semibold text-brand-green">
-          <Timer className="h-3.5 w-3.5" /> {remaining}s
+        <span className="inline-flex items-center gap-1 rounded-full bg-brand-orange/15 px-2.5 py-1 text-xs font-semibold tabular-nums text-brand-green">
+          <Timer className="h-3.5 w-3.5" /> {String(Math.floor(remaining / 60)).padStart(2, '0')}:
+          {String(remaining % 60).padStart(2, '0')}
         </span>
         {props.amountProvider != null && (
           <span className="font-display text-lg text-brand-green">{formatARS(props.amountProvider)}</span>

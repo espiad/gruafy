@@ -136,6 +136,46 @@ export async function cancelOrderByClient(orderId: string, reason?: string): Pro
   return { ok: true, orderId };
 }
 
+/**
+ * Cierra la búsqueda si venció la ventana de oferta sin que nadie aceptara.
+ * La llama el cliente desde su pantalla cuando el countdown llega a cero.
+ * Idempotente y con guard: si ya la tomó una grúa, no la pisa.
+ */
+export async function resolveSearchTimeout(orderId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const { data: order } = await supabase
+    .from('service_orders')
+    .select('id, state, offer_deadline, client_id')
+    .eq('id', orderId)
+    .single();
+  if (!order || order.client_id !== user.id) return { ok: false, error: 'Orden no encontrada' };
+  if (order.state !== 'searching_provider') return { ok: true, orderId }; // ya avanzó
+  if (order.offer_deadline && new Date(order.offer_deadline) > new Date()) {
+    return { ok: false, error: 'Todavía hay tiempo' };
+  }
+
+  // Solo pasa a no_provider si sigue en búsqueda (evita pisar una aceptación al límite).
+  await supabase
+    .from('service_orders')
+    .update({ state: 'no_provider' })
+    .eq('id', orderId)
+    .eq('state', 'searching_provider');
+  await supabase.from('order_events').insert({
+    order_id: orderId,
+    from_state: 'searching_provider',
+    to_state: 'no_provider',
+    actor_role: 'client',
+    event: 'Sin grúas disponibles',
+  });
+  revalidatePath(`/cliente/solicitudes/${orderId}`);
+  return { ok: true, orderId };
+}
+
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
