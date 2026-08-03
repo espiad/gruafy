@@ -68,12 +68,13 @@ begin
     final_role := 'client';
   end if;
 
-  insert into profiles (id, role, first_name, last_name)
+  insert into profiles (id, role, first_name, last_name, phone)
   values (
     new.id,
     final_role,
     coalesce(new.raw_user_meta_data->>'first_name', ''),
-    coalesce(new.raw_user_meta_data->>'last_name', '')
+    coalesce(new.raw_user_meta_data->>'last_name', ''),
+    nullif(new.raw_user_meta_data->>'phone', '')
   );
   if final_role = 'client' then
     insert into client_profiles (id) values (new.id) on conflict do nothing;

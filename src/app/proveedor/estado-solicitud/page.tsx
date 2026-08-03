@@ -5,6 +5,7 @@ import { getProfile } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { DocumentsManager } from '@/features/providers/documents-manager';
 import { SubmitReviewButton } from '@/features/providers/submit-review-button';
+import { OnboardingProgress } from '@/features/providers/onboarding-progress';
 import type { ProviderStatus } from '@/types/database';
 
 export const metadata: Metadata = { title: 'Estado de tu solicitud' };
@@ -48,6 +49,8 @@ export default async function EstadoSolicitudPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <OnboardingProgress current={editable ? 3 : 4} />
+
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center gap-3">
           <ui.icon className={`h-7 w-7 ${ui.tone}`} />

@@ -80,7 +80,7 @@ export default async function ClienteHome() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl">Hola{firstName ? `, ${firstName}` : ' de nuevo'}</h1>
-          <p className="text-sm text-muted-foreground">¿Necesitás una grúa? Resolvémoslo.</p>
+          <p className="text-sm text-muted-foreground">¿Necesitás una grúa? Resolvámoslo.</p>
         </div>
         <Button asChild className="hidden sm:inline-flex">
           <Link href="/cliente/solicitar">

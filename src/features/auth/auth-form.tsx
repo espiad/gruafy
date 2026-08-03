@@ -45,6 +45,7 @@ export function AuthForm({ mode, provider = false }: { mode: Mode; provider?: bo
             data: {
               first_name: String(form.get('first_name') ?? ''),
               last_name: String(form.get('last_name') ?? ''),
+              phone: String(form.get('phone') ?? ''),
               intended_role: provider ? 'provider_owner' : 'client',
             },
             emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -88,16 +89,29 @@ export function AuthForm({ mode, provider = false }: { mode: Mode; provider?: bo
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" required autoComplete="email" placeholder="vos@email.com" />
       </div>
+      {mode === 'signup' && (
+        <div className="space-y-1.5">
+          <Label htmlFor="phone">Teléfono</Label>
+          <Input id="phone" name="phone" type="tel" required autoComplete="tel" placeholder="11 5555 5555" />
+        </div>
+      )}
       <div className="space-y-1.5">
-        <Label htmlFor="password">Contraseña</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Contraseña</Label>
+          {mode === 'signin' && (
+            <Link href="/recuperar" className="text-xs text-muted-foreground hover:text-brand-green hover:underline">
+              ¿La olvidaste?
+            </Link>
+          )}
+        </div>
         <Input
           id="password"
           name="password"
           type="password"
           required
-          minLength={8}
+          {...(mode === 'signup' ? { minLength: 8 } : {})}
           autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-          placeholder="Mínimo 8 caracteres"
+          placeholder={mode === 'signup' ? 'Al menos 8 caracteres' : 'Tu contraseña'}
         />
       </div>
 
