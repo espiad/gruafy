@@ -26,9 +26,8 @@ const FAQ = [
 export default function LandingPage() {
   return (
     <>
-      {/* HERO */}
+      {/* HERO — naranja pleno para máxima legibilidad */}
       <section className="relative overflow-hidden bg-brand-orange text-brand-ink">
-        <div className="brand-lines pointer-events-none absolute inset-0 opacity-[0.12]" aria-hidden />
         <div className="container relative grid items-center gap-10 py-20 md:grid-cols-2 md:py-28">
           <div className="space-y-6 animate-fade-in">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-ink/20 bg-brand-ink/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide">

@@ -23,21 +23,31 @@ export function paymentsMode(): 'test' | 'production' {
   return get('PAYMENTS_MODE') === 'production' ? 'production' : 'test';
 }
 
+/** Normaliza cadena vacía → undefined. Recibe el VALOR (no el nombre). */
+const clean = (v: string | undefined): string | undefined => (v && v.length > 0 ? v : undefined);
+
+/**
+ * IMPORTANTE: las variables `NEXT_PUBLIC_*` deben leerse con nombre LITERAL
+ * (`process.env.NEXT_PUBLIC_X`), no con clave dinámica, para que Next.js las
+ * incruste en el bundle del navegador. Un acceso dinámico queda `undefined` en
+ * el cliente aunque exista en el servidor.
+ */
 export const publicEnv = {
-  appUrl: get('NEXT_PUBLIC_APP_URL') ?? 'http://localhost:3000',
-  appName: get('NEXT_PUBLIC_APP_NAME') ?? 'gruafy',
-  supabaseUrl: get('NEXT_PUBLIC_SUPABASE_URL'),
+  appUrl: clean(process.env.NEXT_PUBLIC_APP_URL) ?? 'http://localhost:3000',
+  appName: clean(process.env.NEXT_PUBLIC_APP_NAME) ?? 'gruafy',
+  supabaseUrl: clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
   supabaseKey:
-    get('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') ?? get('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-  geoapifyKey: get('NEXT_PUBLIC_GEOAPIFY_API_KEY'),
-  whatsapp: get('NEXT_PUBLIC_WHATSAPP_NUMBER'),
+    clean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ??
+    clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  geoapifyKey: clean(process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY),
+  whatsapp: clean(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER),
   // Vacío = no configurado todavía; la UI lo omite en vez de mostrar un placeholder.
-  supportEmail: get('NEXT_PUBLIC_SUPPORT_EMAIL') ?? '',
+  supportEmail: clean(process.env.NEXT_PUBLIC_SUPPORT_EMAIL) ?? '',
   legal: {
-    name: get('NEXT_PUBLIC_LEGAL_NAME') ?? 'gruafy',
-    cuit: get('NEXT_PUBLIC_LEGAL_CUIT') ?? '',
-    address: get('NEXT_PUBLIC_LEGAL_ADDRESS') ?? 'CABA, Argentina',
-    email: get('NEXT_PUBLIC_LEGAL_EMAIL') ?? '',
+    name: clean(process.env.NEXT_PUBLIC_LEGAL_NAME) ?? 'gruafy',
+    cuit: clean(process.env.NEXT_PUBLIC_LEGAL_CUIT) ?? '',
+    address: clean(process.env.NEXT_PUBLIC_LEGAL_ADDRESS) ?? 'CABA, Argentina',
+    email: clean(process.env.NEXT_PUBLIC_LEGAL_EMAIL) ?? '',
   },
 } as const;
 
