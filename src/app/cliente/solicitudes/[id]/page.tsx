@@ -11,6 +11,7 @@ import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map';
 import { ReviewForm } from '@/features/reviews/review-form';
 import { OrderAutoRefresh, SearchingCard, PaymentCountdown, CancelAwaitingPayment } from '@/features/orders/order-live';
+import { StateAlert } from '@/features/orders/live-alert';
 import { Star, ShieldCheck } from 'lucide-react';
 import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
@@ -162,6 +163,8 @@ export default async function SolicitudDetalle({
 
       {/* Actualiza la vista sola en todo estado activo (búsqueda → pago → tracking → cierre). */}
       <OrderAutoRefresh active={!isTerminal(state)} intervalMs={3000} />
+      {/* Aviso perceptible (beep + vibración + título) al cambiar a un estado clave. */}
+      <StateAlert state={state} />
 
       {state !== 'searching_provider' && <StatusHero state={state} role="cliente" etaMin={etaMin} />}
 

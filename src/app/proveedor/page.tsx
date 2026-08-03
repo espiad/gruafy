@@ -5,6 +5,7 @@ import { getProfile } from '@/lib/auth/session';
 import { AvailabilityToggle } from '@/features/providers/availability-toggle';
 import { OfferCard } from '@/features/providers/offer-card';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
+import { NewOfferAlert } from '@/features/orders/live-alert';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { formatARS } from '@/lib/format';
 import { zoneFromAddress } from '@/lib/geo/distance';
@@ -91,6 +92,8 @@ export default async function ProveedorPanel() {
     <div className="space-y-8">
       {/* Mientras está disponible, refresca para que aparezcan pedidos nuevos. */}
       <OrderAutoRefresh active={provider.is_available} intervalMs={5000} />
+      {/* Beep + vibración + parpadeo del título cuando entra un pedido nuevo. */}
+      {!active && provider.is_available && <NewOfferAlert count={offers?.length ?? 0} />}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl">{provider.legal_name}</h1>

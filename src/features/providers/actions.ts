@@ -68,6 +68,19 @@ export async function acceptOffer(orderId: string, driverId?: string): Promise<R
   const provider = await providerOf(user.id);
   if (!provider) return { ok: false, error: 'Sin proveedor' };
 
+  // Si eligió conductor, verificamos que sea un miembro activo de ESTE proveedor
+  // (no se puede asignar un conductor de otra grúa) antes de tomar la oferta.
+  if (driverId) {
+    const { data: member } = await supabase
+      .from('provider_members')
+      .select('id')
+      .eq('id', driverId)
+      .eq('provider_id', provider.id)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (!member) return { ok: false, error: 'El conductor elegido no es de tu equipo' };
+  }
+
   const { data, error } = await supabase.rpc('accept_offer', {
     p_order_id: orderId,
     p_provider_id: provider.id,
@@ -75,9 +88,14 @@ export async function acceptOffer(orderId: string, driverId?: string): Promise<R
   if (error) return { ok: false, error: 'No se pudo aceptar (¿ya la tomó otro?)' };
   if (data !== true) return { ok: false, error: 'La oferta ya no está disponible' };
 
-  // Registra qué conductor está manejando (para mostrarle los datos correctos al cliente).
+  // Registra qué conductor está manejando (para mostrarle los datos correctos al
+  // cliente). Guardado por provider_id: solo sobre la orden que este proveedor tomó.
   if (driverId) {
-    await supabase.from('service_orders').update({ driver_id: driverId }).eq('id', orderId);
+    await supabase
+      .from('service_orders')
+      .update({ driver_id: driverId })
+      .eq('id', orderId)
+      .eq('provider_id', provider.id);
   }
 
   revalidatePath('/proveedor');
@@ -111,6 +129,8 @@ export async function advanceOrderState(orderId: string, to: OrderState): Promis
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'No autenticado' };
+  const provider = await providerOf(user.id);
+  if (!provider) return { ok: false, error: 'Sin proveedor' };
 
   const { data: order } = await supabase
     .from('service_orders')
@@ -118,6 +138,8 @@ export async function advanceOrderState(orderId: string, to: OrderState): Promis
     .eq('id', orderId)
     .single();
   if (!order) return { ok: false, error: 'Orden no encontrada' };
+  // Solo el proveedor asignado a la orden puede avanzarla.
+  if (order.provider_id !== provider.id) return { ok: false, error: 'Este servicio no es tuyo' };
 
   const actor: Actor = 'provider';
   let transition;
@@ -130,8 +152,19 @@ export async function advanceOrderState(orderId: string, to: OrderState): Promis
   const patch: Partial<import('@/types/database').ServiceOrderRow> = { state: to };
   if (to === 'completed') patch.completed_at = new Date().toISOString();
 
-  const { error } = await supabase.from('service_orders').update(patch).eq('id', orderId);
+  // Update guardado: solo si sigue en el estado que leímos y asignado a este
+  // proveedor. Evita pisar cambios en carrera (cancelación admin, doble click).
+  const { data: updated, error } = await supabase
+    .from('service_orders')
+    .update(patch)
+    .eq('id', orderId)
+    .eq('state', order.state)
+    .eq('provider_id', provider.id)
+    .select('id');
   if (error) return { ok: false, error: 'No pudimos actualizar el estado' };
+  if (!updated || updated.length === 0) {
+    return { ok: false, error: 'El servicio cambió de estado. Actualizá la pantalla.' };
+  }
 
   await supabase.from('order_events').insert({
     order_id: orderId,
