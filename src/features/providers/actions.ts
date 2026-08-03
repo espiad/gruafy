@@ -188,17 +188,29 @@ const onboardingSchema = z.object({
 export async function createProviderAccount(input: z.infer<typeof onboardingSchema>): Promise<Result> {
   const parsed = onboardingSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+
+  // Verificamos al usuario con su sesión…
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'No autenticado' };
 
+  // …y hacemos las escrituras con service role (operación de servidor confiable,
+  // con owner_id fijado al usuario verificado). Evita ambigüedades de RLS en el alta.
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { ok: false, error: 'El servidor no está configurado para el alta de proveedores.' };
+  }
+
   const existing = await providerOf(user.id);
   let providerId = existing?.id;
 
   if (!providerId) {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from('provider_accounts')
       .insert({
         owner_id: user.id,
@@ -210,21 +222,22 @@ export async function createProviderAccount(input: z.infer<typeof onboardingSche
       })
       .select('id')
       .single();
-    if (error || !data) return { ok: false, error: 'No pudimos crear la cuenta de proveedor' };
+    if (error || !data) {
+      return { ok: false, error: `No pudimos crear la cuenta${error ? `: ${error.message}` : ''}` };
+    }
     providerId = data.id;
 
-    // El dueño como miembro y el usuario pasa a rol provider_owner.
-    await supabase.from('provider_members').insert({
+    await admin.from('provider_members').insert({
       provider_id: providerId,
       user_id: user.id,
       role: 'owner',
       full_name: parsed.data.legal_name,
       phone: parsed.data.contact_phone,
     });
-    await supabase.from('profiles').update({ role: 'provider_owner' }).eq('id', user.id);
+    await admin.from('profiles').update({ role: 'provider_owner' }).eq('id', user.id);
   }
 
-  await supabase.from('tow_trucks').insert({
+  const { error: truckErr } = await admin.from('tow_trucks').insert({
     provider_id: providerId,
     patente: parsed.data.truck.patente,
     brand: parsed.data.truck.brand ?? null,
@@ -232,6 +245,7 @@ export async function createProviderAccount(input: z.infer<typeof onboardingSche
     year: parsed.data.truck.year ?? null,
     capacity: parsed.data.truck.capacity ?? null,
   });
+  if (truckErr) return { ok: false, error: `No pudimos guardar la grúa: ${truckErr.message}` };
 
   revalidatePath('/proveedor');
   return { ok: true, value: providerId };

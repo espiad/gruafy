@@ -24,6 +24,17 @@ export function formatCuit(input: string): string {
   return `${c.slice(0, 2)}-${c.slice(2, 10)}-${c.slice(10)}`;
 }
 
+/**
+ * Formatea mientras se escribe: agrega los guiones automáticamente
+ * (XX-XXXXXXXX-X) sin importar si el usuario los puso o no.
+ */
+export function formatCuitInput(input: string): string {
+  const c = input.replace(/\D/g, '').slice(0, 11);
+  if (c.length <= 2) return c;
+  if (c.length <= 10) return `${c.slice(0, 2)}-${c.slice(2)}`;
+  return `${c.slice(0, 2)}-${c.slice(2, 10)}-${c.slice(10)}`;
+}
+
 /** DNI argentino: 7 u 8 dígitos. */
 export function isValidDni(input: string): boolean {
   const clean = input.replace(/\D/g, '');

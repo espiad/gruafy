@@ -2,37 +2,54 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createProviderAccount } from '@/features/providers/actions';
-import { isValidCuit } from '@/lib/validation/argentina';
+import { isValidCuit, formatCuitInput, isValidPatente, normalizePatente } from '@/lib/validation/argentina';
+import { cn } from '@/lib/utils';
 
 export function OnboardingForm() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const [legalName, setLegalName] = useState('');
+  const [cuit, setCuit] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [patente, setPatente] = useState('');
+  const [year, setYear] = useState('');
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [capacity, setCapacity] = useState('');
+
+  const cuitValid = isValidCuit(cuit);
+  const cuitTouched = cuit.replace(/\D/g, '').length >= 11;
+  const patenteValid = isValidPatente(patente);
+  const patenteTouched = patente.length >= 6;
+
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const f = new FormData(e.currentTarget);
-    const cuit = String(f.get('cuit'));
-    if (!isValidCuit(cuit)) return setError('El CUIT no es válido (11 dígitos, dígito verificador).');
+    if (!legalName.trim()) return setError('Ingresá la razón social.');
+    if (!cuitValid) return setError('Revisá el CUIT: son 11 dígitos con dígito verificador.');
+    if (phone.trim().length < 6) return setError('Ingresá un teléfono de contacto.');
+    if (!patenteValid) return setError('Revisá la patente de la grúa (formato AB123CD o AAA123).');
 
     start(async () => {
       const res = await createProviderAccount({
-        legal_name: String(f.get('legal_name')),
+        legal_name: legalName.trim(),
         cuit,
-        contact_email: String(f.get('contact_email') ?? ''),
-        contact_phone: String(f.get('contact_phone')),
+        contact_email: email.trim(),
+        contact_phone: phone.trim(),
         truck: {
-          patente: String(f.get('patente')),
-          brand: String(f.get('brand') ?? ''),
-          model: String(f.get('model') ?? ''),
-          year: f.get('year') ? Number(f.get('year')) : undefined,
-          capacity: String(f.get('capacity') ?? ''),
+          patente: normalizePatente(patente),
+          brand: brand.trim(),
+          model: model.trim(),
+          year: year ? Number(year) : undefined,
+          capacity: capacity.trim(),
         },
       });
       if (res.ok) router.push('/proveedor/estado-solicitud');
@@ -41,52 +58,78 @@ export function OnboardingForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <fieldset className="space-y-4 rounded-2xl border border-border bg-card p-6">
+    <form onSubmit={onSubmit} className="space-y-5">
+      <fieldset className="space-y-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
         <legend className="px-1 text-sm font-semibold">Datos de la empresa</legend>
         <div className="space-y-1.5">
           <Label htmlFor="legal_name">Razón social</Label>
-          <Input id="legal_name" name="legal_name" required />
+          <Input id="legal_name" value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Ej: Grúas del Sur SRL" />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="cuit">CUIT</Label>
-            <Input id="cuit" name="cuit" required placeholder="30-12345678-9" inputMode="numeric" />
+            <div className="relative">
+              <Input
+                id="cuit"
+                value={cuit}
+                onChange={(e) => setCuit(formatCuitInput(e.target.value))}
+                placeholder="30-71659554-0"
+                inputMode="numeric"
+                className={cn(cuitTouched && (cuitValid ? 'border-success pr-9' : 'border-destructive pr-9'))}
+              />
+              {cuitTouched && cuitValid && (
+                <CheckCircle2 className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-success" />
+              )}
+            </div>
+            <p className={cn('text-xs', cuitTouched && !cuitValid ? 'text-destructive' : 'text-muted-foreground')}>
+              {cuitTouched && !cuitValid ? 'El dígito verificador no cierra. Revisalo.' : 'Escribilo con o sin guiones; los ponemos solos.'}
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="contact_phone">Teléfono</Label>
-            <Input id="contact_phone" name="contact_phone" required type="tel" />
+            <Input id="contact_phone" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" placeholder="11 5555 5555" />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="contact_email">Email de contacto</Label>
-          <Input id="contact_email" name="contact_email" type="email" />
+          <Label htmlFor="contact_email">Email de contacto (opcional)</Label>
+          <Input id="contact_email" value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="contacto@empresa.com" />
         </div>
       </fieldset>
 
-      <fieldset className="space-y-4 rounded-2xl border border-border bg-card p-6">
+      <fieldset className="space-y-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
         <legend className="px-1 text-sm font-semibold">Datos de la grúa</legend>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="patente">Patente</Label>
-            <Input id="patente" name="patente" required placeholder="AB123CD" onChange={(e) => (e.target.value = e.target.value.toUpperCase())} />
+            <div className="relative">
+              <Input
+                id="patente"
+                value={patente}
+                onChange={(e) => setPatente(e.target.value.toUpperCase())}
+                placeholder="AB123CD"
+                className={cn(patenteTouched && (patenteValid ? 'border-success pr-9' : 'border-destructive pr-9'))}
+              />
+              {patenteTouched && patenteValid && (
+                <CheckCircle2 className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-success" />
+              )}
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="year">Año</Label>
-            <Input id="year" name="year" inputMode="numeric" />
+            <Input id="year" value={year} onChange={(e) => setYear(e.target.value)} inputMode="numeric" placeholder="Ej: 2019" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="brand">Marca</Label>
-            <Input id="brand" name="brand" />
+            <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ej: Iveco" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="model">Modelo</Label>
-            <Input id="model" name="model" />
+            <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} placeholder="Ej: Daily" />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="capacity">Capacidad / observaciones</Label>
-          <Input id="capacity" name="capacity" placeholder="Ej: hasta 3.500 kg, plancha" />
+          <Label htmlFor="capacity">Capacidad / observaciones (opcional)</Label>
+          <Input id="capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="Ej: hasta 3.500 kg, plancha" />
         </div>
       </fieldset>
 
