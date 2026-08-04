@@ -72,7 +72,7 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
           {(members ?? []).map((m) => (
             <li key={m.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm">
               <span>{m.full_name} {m.dni && `· DNI ${m.dni}`}</span>
-              <span className="text-xs text-muted-foreground">{m.role === 'owner' ? 'Dueño' : 'Conductor'}</span>
+              <span className="text-xs text-muted-foreground">{m.role === 'owner' ? 'Conductor dueño' : 'Conductor'}</span>
             </li>
           ))}
           {(!members || members.length === 0) && <li className="text-sm text-muted-foreground">Sin conductores.</li>}

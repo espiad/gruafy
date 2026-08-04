@@ -11,6 +11,7 @@ import { StatusHero } from '@/features/orders/status-hero';
 import { FocusDetails } from '@/components/ui/focus-details';
 import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
 import { SupportButton } from '@/features/support/support-button';
+import { EmergencyButton } from '@/features/support/emergency-button';
 import { getPlatformSettings } from '@/features/pricing/settings';
 import { formatARS, formatDistance } from '@/lib/format';
 import { STATE_LABELS, isTerminal, type OrderState } from '@/features/orders/state-machine';
@@ -166,8 +167,13 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
         )}
       </FocusDetails>
 
-      {/* Ayuda humana siempre a mano durante el servicio */}
-      {!isTerminal(state) && <SupportButton role="gruero" orderId={order.id} stateLabel={STATE_LABELS[state]} />}
+      {/* Ayuda humana + emergencia siempre a mano durante el servicio */}
+      {!isTerminal(state) && (
+        <>
+          <SupportButton role="gruero" orderId={order.id} stateLabel={STATE_LABELS[state]} />
+          <EmergencyButton />
+        </>
+      )}
     </div>
   );
 }

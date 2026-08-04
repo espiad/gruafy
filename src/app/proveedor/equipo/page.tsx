@@ -8,7 +8,7 @@ import { DriverLicenseUpload } from '@/features/providers/driver-license-upload'
 
 export const metadata: Metadata = { title: 'Equipo' };
 
-const ROLE_LABEL = { owner: 'Dueño', driver: 'Conductor' };
+const ROLE_LABEL = { owner: 'Conductor dueño', driver: 'Conductor' };
 
 export default async function EquipoPage() {
   const profile = await getProfile();

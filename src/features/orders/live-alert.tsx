@@ -27,6 +27,7 @@ export function NewOfferAlert({ count }: { count: number }) {
 const ALERTS: Record<string, string> = {
   awaiting_payment: '✅ ¡Una grúa aceptó! Reservá con el anticipo',
   paid: '💳 Pago confirmado — tu grúa está en camino',
+  provider_en_route: '🚚 Tu grúa va en camino — recordá: máx. 2 personas',
   provider_arrived: '📍 Tu grúa llegó al punto de encuentro',
   completed: '🏁 Servicio completado',
 };

@@ -121,7 +121,7 @@ export function OfferCard(props: Props) {
           >
             {props.drivers.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.full_name} {d.role === 'owner' ? '(dueño)' : ''}
+                {d.full_name} {d.role === 'owner' ? '(dueño)' : '(conductor)'}
               </option>
             ))}
           </select>

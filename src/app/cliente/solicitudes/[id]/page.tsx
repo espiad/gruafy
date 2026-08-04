@@ -13,9 +13,10 @@ import { ReviewForm } from '@/features/reviews/review-form';
 import { OrderAutoRefresh, SearchingCard, PaymentCountdown, CancelAwaitingPayment } from '@/features/orders/order-live';
 import { StateAlert } from '@/features/orders/live-alert';
 import { FocusDetails } from '@/components/ui/focus-details';
-import { Star, ShieldCheck } from 'lucide-react';
+import { Star, ShieldCheck, Users } from 'lucide-react';
 import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
+import { EmergencyButton } from '@/features/support/emergency-button';
 import { InvoiceButtons } from '@/features/orders/invoice-buttons';
 import { InsuranceGuide } from '@/features/orders/insurance-guide';
 import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
@@ -321,9 +322,23 @@ export default async function SolicitudDetalle({
         />
       )}
 
+      {/* Aviso clave cuando la grúa va en camino: máx. 2 personas y no abandono. */}
+      {state === 'provider_en_route' && (
+        <div className="rounded-2xl border-2 border-warning/50 bg-warning/10 p-4">
+          <p className="flex items-center gap-2 font-semibold"><Users className="h-4 w-4 text-warning-foreground" /> Antes de que llegue la grúa</p>
+          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+            <li>· Con la grúa viajan <strong>máximo 2 personas</strong>. Si son más, es el momento de coordinar otro vehículo (remís, taxi, alguien que los pase a buscar).</li>
+            <li>· El gruero <strong>no puede dejar a nadie en la ruta</strong> (abandono de persona). Por eso, si son más de 2, resolvelo ahora para no demorar la salida.</li>
+          </ul>
+        </div>
+      )}
+
       {/* Ayuda humana durante estados activos (incl. esperas que solo admin cancela). */}
       {!isTerminal(state) && state !== 'searching_provider' && (
-        <SupportButton role="cliente" orderId={order.id} stateLabel={STATE_LABELS[state]} />
+        <>
+          <SupportButton role="cliente" orderId={order.id} stateLabel={STATE_LABELS[state]} />
+          <EmergencyButton />
+        </>
       )}
 
       {state === 'completed' && (
