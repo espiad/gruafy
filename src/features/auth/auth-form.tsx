@@ -67,7 +67,7 @@ export function AuthForm({ mode, provider = false }: { mode: Mode; provider?: bo
       router.push(target);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? traducirError(err.message) : 'No pudimos completar la acción.');
+      setError(describeAuthError(err));
       setLoading(false);
     }
   }
@@ -206,6 +206,23 @@ export function AuthForm({ mode, provider = false }: { mode: Mode; provider?: bo
     </form>
     </div>
   );
+}
+
+/**
+ * Extrae un mensaje legible de un error de Supabase Auth. Usa message Y code/status
+ * (a veces el message viene vacío o como "{}"), y traduce los casos frecuentes.
+ */
+function describeAuthError(err: unknown): string {
+  const e = err as { message?: unknown; code?: string; status?: number } | null;
+  const rawMsg = typeof e?.message === 'string' ? e.message : '';
+  const code = e?.code ?? '';
+  // Falla del envío de mail (SMTP mal configurado o proveedor rechazando).
+  if (code === 'unexpected_failure' || /confirmation email|sending.*email|error sending/i.test(rawMsg)) {
+    return 'No pudimos enviar el email de confirmación (falla el envío de mails). Para seguir probando, en Supabase desactivá "Confirm email"; o revisá la configuración de SMTP.';
+  }
+  const usable = rawMsg && rawMsg !== '{}' && rawMsg !== '[object Object]' ? rawMsg : '';
+  if (usable) return traducirError(usable);
+  return 'No pudimos completar la acción. Probá de nuevo en un momento.';
 }
 
 function traducirError(msg: string): string {
