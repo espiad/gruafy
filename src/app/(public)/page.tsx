@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { MapPin, Radar, CheckCircle2, ShieldCheck, Eye, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeroVisual } from '@/components/brand/hero-visual';
+import { TrustBand, ProductPeek, Testimonials } from '@/components/landing/landing-sections';
 
 const STEPS = [
   { icon: MapPin, title: 'Pedí', text: 'Marcá dónde estás y a dónde vas. Ves el precio antes de aceptar.' },
@@ -55,6 +56,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* CONFIANZA */}
+      <TrustBand />
+
       {/* PASOS */}
       <section className="container py-20">
         <h2 className="text-center text-3xl font-semibold">Tu auxilio en tres pasos</h2>
@@ -92,6 +96,19 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* PRODUCTO POR DENTRO */}
+      <ProductPeek variant="cliente" />
+
+      {/* TESTIMONIOS */}
+      <Testimonials
+        title="Historias de quienes ya se salvaron"
+        items={[
+          { quote: 'Se me quedó el auto en la General Paz un domingo. En minutos tenía una grúa en camino y la veía llegar en el mapa. Cero incertidumbre.', name: 'M. Fernández', meta: 'Villa Devoto, CABA' },
+          { quote: 'Lo mejor fue saber quién venía antes de pagar: nombre, patente y puntaje. Me dio mucha tranquilidad en un momento feo.', name: 'J. Paniagua', meta: 'Lanús, GBA' },
+          { quote: 'Pagué solo el anticipo por la app y el resto al gruero al final. Todo transparente, sin sorpresas ni llamados eternos.', name: 'C. Rodríguez', meta: 'Caballito, CABA' },
+        ]}
+      />
 
       {/* CTA SIMULADOR */}
       <section className="container py-20">

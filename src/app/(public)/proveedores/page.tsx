@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GruafyMark } from '@/components/brand/logo';
+import { EarningsSimulator } from '@/features/pricing/earnings-simulator';
+import { ProductPeek, Testimonials } from '@/components/landing/landing-sections';
 
 export const metadata: Metadata = {
   title: 'Sumá tu grúa',
@@ -82,6 +84,32 @@ export default function ProveedoresLanding() {
           ))}
         </div>
       </section>
+
+      {/* SIMULADOR DE GANANCIAS */}
+      <section className="container py-20">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="text-3xl font-semibold">¿Cuánto podés ganar?</h2>
+          <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+            Movés la distancia y los viajes por día, y ves tu ingreso estimado. Sin vueltas.
+          </p>
+        </div>
+        <div className="mt-10">
+          <EarningsSimulator />
+        </div>
+      </section>
+
+      {/* PRODUCTO POR DENTRO (gruero) */}
+      <ProductPeek variant="gruero" />
+
+      {/* TESTIMONIOS DE GRUEROS */}
+      <Testimonials
+        title="Grueros que ya trabajan con gruafy"
+        items={[
+          { quote: 'Antes dependía de una aseguradora que me pagaba tarde y poco. Ahora cobro el saldo directo del cliente al terminar el viaje.', name: 'R. Sosa', meta: 'Grúa en Quilmes' },
+          { quote: 'Me pongo disponible cuando quiero y el pedido me llega con la zona y el vehículo. Sé a qué voy antes de aceptar.', name: 'D. Ledesma', meta: 'Grúa en Morón' },
+          { quote: 'La app es simple hasta para los que no somos de la tecnología. Un botón para cada paso y listo.', name: 'H. Cabrera', meta: 'Grúa en La Matanza' },
+        ]}
+      />
 
       {/* CÓMO EMPEZAR */}
       <section className="bg-muted/40 py-20">
