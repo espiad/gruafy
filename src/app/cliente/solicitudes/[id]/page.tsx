@@ -8,7 +8,7 @@ import { PayButton } from '@/features/payments/pay-button';
 import { SimulatePaymentButton } from '@/features/payments/simulate-payment-button';
 import { serverEnv, paymentsMode } from '@/lib/env';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
-import { TrackingMap } from '@/components/maps/tracking-map';
+import { TrackingMap } from '@/components/maps/tracking-map-lazy';
 import { ReviewForm } from '@/features/reviews/review-form';
 import { OrderAutoRefresh, SearchingCard, PaymentCountdown, CancelAwaitingPayment } from '@/features/orders/order-live';
 import { StateAlert } from '@/features/orders/live-alert';

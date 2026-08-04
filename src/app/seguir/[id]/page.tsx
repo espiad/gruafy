@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Logo } from '@/components/brand/logo';
-import { TrackingMap } from '@/components/maps/tracking-map';
+import { TrackingMap } from '@/components/maps/tracking-map-lazy';
 import { StatusHero } from '@/features/orders/status-hero';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { haversineMeters } from '@/lib/geo/distance';

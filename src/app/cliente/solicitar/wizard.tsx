@@ -6,7 +6,7 @@ import { Loader2, AlertCircle, Info, Car, Bike, KeyRound, Camera } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LocationPicker } from '@/components/maps/location-picker';
+import { LocationPicker } from '@/components/maps/location-picker-lazy';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { quote, type PricingSettings } from '@/features/pricing/pricing';
 import { hasGeoapify, type GeoPoint } from '@/lib/geoapify';

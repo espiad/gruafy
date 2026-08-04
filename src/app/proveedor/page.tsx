@@ -72,13 +72,15 @@ export default async function ProveedorPanel() {
       offerOrders = (data ?? []) as typeof offerOrders;
       // URL firmada de la foto de la situación (si el cliente la cargó), para verla
       // antes de aceptar. Corta (10 min) porque es dato sensible previo al pago.
-      for (const o of offerOrders) {
-        const path = (o.conditions as { situation_photo_path?: string } | null)?.situation_photo_path;
-        if (path) {
+      // En paralelo (no secuencial) para no encadenar latencias.
+      await Promise.all(
+        offerOrders.map(async (o) => {
+          const path = (o.conditions as { situation_photo_path?: string } | null)?.situation_photo_path;
+          if (!path) return;
           const { data: signed } = await admin.storage.from('documents').createSignedUrl(path, 600);
           situationPhotos[o.id] = signed?.signedUrl ?? null;
-        }
-      }
+        }),
+      );
       const vIds = offerOrders.map((o) => o.vehicle_id).filter(Boolean) as string[];
       if (vIds.length) {
         const { data: vs } = await admin
