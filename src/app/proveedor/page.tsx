@@ -57,6 +57,7 @@ export default async function ProveedorPanel() {
     state: string;
   }> = [];
   let offerVehicles: Record<string, { brand: string; model: string; year: number | null; color: string | null; gearbox: string }> = {};
+  const situationPhotos: Record<string, string | null> = {};
   if (orderIds.length) {
     const { createAdminClient } = await import('@/lib/supabase/admin');
     try {
@@ -67,6 +68,15 @@ export default async function ProveedorPanel() {
         .in('id', orderIds)
         .eq('state', 'searching_provider');
       offerOrders = (data ?? []) as typeof offerOrders;
+      // URL firmada de la foto de la situación (si el cliente la cargó), para verla
+      // antes de aceptar. Corta (10 min) porque es dato sensible previo al pago.
+      for (const o of offerOrders) {
+        const path = (o.conditions as { situation_photo_path?: string } | null)?.situation_photo_path;
+        if (path) {
+          const { data: signed } = await admin.storage.from('documents').createSignedUrl(path, 600);
+          situationPhotos[o.id] = signed?.signedUrl ?? null;
+        }
+      }
       const vIds = offerOrders.map((o) => o.vehicle_id).filter(Boolean) as string[];
       if (vIds.length) {
         const { data: vs } = await admin
@@ -146,6 +156,7 @@ export default async function ProveedorPanel() {
                     (order.pricing as { saldo_estimado_gruero?: number } | null)?.saldo_estimado_gruero ?? null
                   }
                   drivers={drivers ?? []}
+                  situationPhotoUrl={situationPhotos[order.id] ?? null}
                 />
               );
             })}

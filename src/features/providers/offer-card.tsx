@@ -26,6 +26,7 @@ interface Props {
   vehicle?: { brand: string; model: string; year: number | null } | null;
   amountProvider: number | null;
   drivers: Driver[];
+  situationPhotoUrl?: string | null;
 }
 
 /**
@@ -97,6 +98,15 @@ export function OfferCard(props: Props) {
           <span><strong>Destino:</strong> {props.destAddress ?? '—'}</span>
         </p>
       </div>
+
+      {props.situationPhotoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={props.situationPhotoUrl}
+          alt="Situación del vehículo"
+          className="mt-3 max-h-40 w-full rounded-lg border border-border object-cover"
+        />
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1"><VType className="h-3.5 w-3.5" />

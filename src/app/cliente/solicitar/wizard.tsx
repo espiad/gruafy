@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle, Info, Car, Bike, KeyRound } from 'lucide-react';
+import { Loader2, AlertCircle, Info, Car, Bike, KeyRound, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,7 @@ import { quote, type PricingSettings } from '@/features/pricing/pricing';
 import { hasGeoapify, type GeoPoint } from '@/lib/geoapify';
 import { normalizePatente, isValidPatente } from '@/lib/validation/argentina';
 import { brandsFor, type VehicleType } from '@/features/orders/vehicle-data';
-import { createOrder } from '@/features/orders/actions';
+import { createOrder, uploadSituationPhoto } from '@/features/orders/actions';
 
 interface VehicleLite {
   id: string;
@@ -47,6 +47,30 @@ export function SolicitarWizard({
   const [useNew, setUseNew] = useState(vehicles.length === 0);
   const [vType, setVType] = useState<VehicleType>('auto');
   const [nv, setNv] = useState({ brand: '', model: '', year: '', patente: '', gearbox: 'unknown' as VehicleLite['gearbox'], has_keys: true, color: '' });
+
+  // Foto de la situación (cámara en el momento, comprimida)
+  const [photo, setPhoto] = useState<Blob | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  async function onPhoto(file: File | undefined) {
+    if (!file) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const { compressImage } = await import('@/lib/image/compress');
+      const blob = await compressImage(file, 1280, 0.7);
+      setPhoto(blob);
+      setPhotoPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(blob);
+      });
+    } catch {
+      setError('No pudimos procesar la foto. Probá de nuevo.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   // Paso 2 — ubicación
   const [origin, setOrigin] = useState<GeoPoint | null>(null);
@@ -89,6 +113,7 @@ export function SolicitarWizard({
         if (!nv.brand || !nv.model) return 'Completá marca y modelo';
         if (!isValidPatente(nv.patente)) return 'Revisá la patente (formato AB123CD o AAA123)';
       } else if (!vehicleId) return 'Elegí un vehículo';
+      if (!photo) return 'Sacá una foto de cómo está el vehículo para continuar';
     }
     if (step === 1) {
       if (!origin || !dest) return 'Marcá el origen y el destino';
@@ -140,6 +165,16 @@ export function SolicitarWizard({
         accepted_terms: true,
       });
       if (!res.ok) return setError(res.error ?? 'No pudimos crear la solicitud');
+      // Sube la foto de la situación (best-effort; no bloquea el pedido si falla).
+      if (photo && res.orderId) {
+        try {
+          const fd = new FormData();
+          fd.append('photo', photo, 'situacion.jpg');
+          await uploadSituationPhoto(res.orderId, fd);
+        } catch {
+          /* la orden ya se creó; la foto es complementaria */
+        }
+      }
       router.push(`/cliente/solicitudes/${res.orderId}`);
     });
   }
@@ -295,6 +330,32 @@ export function SolicitarWizard({
                 </button>
               </div>
             )}
+
+            {/* Foto de la situación: SOLO cámara en el momento (no galería), para
+                evitar fotos falsas. Se comprime en el celu antes de subir. */}
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-sm font-medium">Foto de la situación</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Sacá una foto de cómo quedó el vehículo (dónde está, si hay algo alrededor). La ve la
+                grúa antes de aceptar. Tiene que ser una foto del momento.
+              </p>
+              {photoPreview ? (
+                <div className="mt-2 space-y-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photoPreview} alt="Situación del vehículo" className="max-h-48 w-full rounded-lg object-cover" />
+                  <label className="focus-ring inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent">
+                    <Camera className="h-4 w-4" /> Sacar otra
+                    <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => onPhoto(e.target.files?.[0])} />
+                  </label>
+                </div>
+              ) : (
+                <label className="focus-ring mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-4 text-sm font-medium hover:bg-accent">
+                  {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  {photoBusy ? 'Procesando…' : 'Sacar foto con la cámara'}
+                  <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={photoBusy} onChange={(e) => onPhoto(e.target.files?.[0])} />
+                </label>
+              )}
+            </div>
           </div>
         )}
 

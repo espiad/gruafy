@@ -202,6 +202,47 @@ export async function resolveSearchTimeout(orderId: string): Promise<ActionResul
   return { ok: true, orderId };
 }
 
+/**
+ * Sube la foto de la situación (auxilio) de una orden del cliente. La imagen ya
+ * viene comprimida del navegador y sacada con la cámara en el momento. Se guarda
+ * con service role (el bucket está scopeado a proveedores) y se registra el path
+ * en `conditions.situation_photo_path` para que el gruero la vea antes de aceptar.
+ */
+export async function uploadSituationPhoto(orderId: string, formData: FormData): Promise<ActionResult> {
+  const file = formData.get('photo');
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'Foto inválida' };
+  if (file.size > 3 * 1024 * 1024) return { ok: false, error: 'La foto es muy pesada' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const { data: order } = await supabase
+    .from('service_orders')
+    .select('id, client_id, conditions')
+    .eq('id', orderId)
+    .single();
+  if (!order || order.client_id !== user.id) return { ok: false, error: 'Orden no encontrada' };
+
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const path = `orders/${orderId}/situacion-${Date.now()}.jpg`;
+  const { error: upErr } = await admin.storage.from('documents').upload(path, file, {
+    contentType: 'image/jpeg',
+    upsert: true,
+  });
+  if (upErr) return { ok: false, error: 'No pudimos subir la foto' };
+
+  const conditions = { ...((order.conditions as Record<string, unknown>) ?? {}), situation_photo_path: path };
+  await admin
+    .from('service_orders')
+    .update({ conditions: conditions as import('@/types/database').Json })
+    .eq('id', orderId);
+  return { ok: true, orderId };
+}
+
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
