@@ -15,7 +15,10 @@ export const DEFAULT_PLATFORM: PlatformValues = {
   ...DEFAULT_PRICING,
   max_pasajeros: 2,
   oferta_proveedor_segundos: 120,
-  pago_cliente_segundos: 180,
+  // Ventana para pagar el anticipo. Debe alcanzar para entrar a Checkout Pro,
+  // loguearse en Mercado Pago y confirmar: 3 min era demasiado corto y la
+  // preferencia expiraba durante el pago. 10 min es un margen realista.
+  pago_cliente_segundos: 600,
   radio_busqueda_km: 25,
   extras_categorias: [
     'peajes',

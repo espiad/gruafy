@@ -12,6 +12,7 @@ const recordSchema = z.object({
   docNumber: z.string().max(60).optional(),
   storagePath: z.string().min(3),
   expiresAt: z.string().optional(),
+  memberId: z.string().uuid().optional(),
 });
 
 /**
@@ -31,9 +32,22 @@ export async function recordDocument(input: z.infer<typeof recordSchema>) {
   }
 
   const supabase = await createClient();
+  // Si el documento es de un conductor, verificamos que el miembro sea de este
+  // proveedor (evita colgar un documento de otra cuenta).
+  if (d.memberId) {
+    const { data: member } = await supabase
+      .from('provider_members')
+      .select('id')
+      .eq('id', d.memberId)
+      .eq('provider_id', d.providerId)
+      .maybeSingle();
+    if (!member) return { ok: false as const, error: 'Conductor inválido' };
+  }
   const { error } = await supabase.from('provider_documents').insert({
     provider_id: d.providerId,
     owner_kind: d.ownerKind,
+    truck_id: null,
+    member_id: d.memberId ?? null,
     doc_type: d.docType,
     doc_number: d.docNumber ?? null,
     storage_path: d.storagePath,
@@ -42,6 +56,7 @@ export async function recordDocument(input: z.infer<typeof recordSchema>) {
   });
   if (error) return { ok: false as const, error: 'No pudimos registrar el documento' };
   revalidatePath('/proveedor/estado-solicitud');
+  revalidatePath('/proveedor/equipo');
   return { ok: true as const };
 }
 
@@ -57,5 +72,6 @@ export async function deleteDocument(docId: string) {
     await supabase.from('provider_documents').delete().eq('id', docId);
   }
   revalidatePath('/proveedor/estado-solicitud');
+  revalidatePath('/proveedor/equipo');
   return { ok: true as const };
 }

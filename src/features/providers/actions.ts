@@ -81,9 +81,15 @@ export async function acceptOffer(orderId: string, driverId?: string): Promise<R
     if (!member) return { ok: false, error: 'El conductor elegido no es de tu equipo' };
   }
 
+  // La ventana de pago sale de la configuración de la plataforma (no del default
+  // corto del RPC), para que el cliente tenga tiempo real de pagar en MP.
+  const { getPlatformSettings } = await import('@/features/pricing/settings');
+  const settings = await getPlatformSettings();
+
   const { data, error } = await supabase.rpc('accept_offer', {
     p_order_id: orderId,
     p_provider_id: provider.id,
+    p_pay_seconds: settings.pago_cliente_segundos,
   });
   if (error) return { ok: false, error: 'No se pudo aceptar (¿ya la tomó otro?)' };
   if (data !== true) return { ok: false, error: 'La oferta ya no está disponible' };
