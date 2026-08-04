@@ -44,7 +44,10 @@ export default function TerminosClientes() {
       <p>
         El presupuesto base es fijo respecto de lo que declarás. Pueden sumarse adicionales solo por
         situaciones avisadas de antemano (peajes, espera, dollys no informados, ruedas bloqueadas,
-        condición distinta del vehículo o acceso especial), con su motivo.
+        condición distinta del vehículo o acceso especial), con su motivo. Los adicionales están
+        acotados a un catálogo con topes de precio y cantidad definidos por gruafy: el gruero no puede
+        cobrar montos fuera de esos límites, y los que superen ciertos topes quedan sujetos a revisión.
+        Todos los adicionales aprobados se reflejan en el total a pagar al finalizar.
       </p>
 
       <h2>5. Comprobantes</h2>
@@ -59,18 +62,21 @@ export default function TerminosClientes() {
         caso por caso y se procesan a través de Mercado Pago.
       </p>
 
-      <h2>7. Responsabilidad</h2>
+      <h2>7. Responsabilidad y seguridad</h2>
       <p>
         El gruero es responsable de la ejecución del servicio. gruafy no responde por fallas mecánicas
         preexistentes, demoras ajenas a la plataforma ni daños derivados de la operación. Viajan como
-        máximo dos personas junto al vehículo.
+        máximo <strong>dos personas</strong> junto al vehículo; si sos más, coordiná otro transporte
+        antes de que llegue la grúa. El gruero no puede dejar personas en la vía pública (no está
+        permitido el abandono de persona). Ante una emergencia, usá el botón para llamar al 911.
       </p>
 
-      <h2>8. Datos personales</h2>
+      <h2>8. Datos personales y fotos</h2>
       <p>
         El tratamiento de tus datos se rige por nuestra Política de Privacidad. Antes del pago, el
         gruero no accede a tu ubicación exacta ni a tu contacto; se revelan al confirmarse el pago para
-        poder prestar el servicio.
+        poder prestar el servicio. Al pedir, subís una foto de la situación del vehículo (tomada en el
+        momento) que el gruero puede ver para evaluar el servicio; declarás que es veraz y actual.
       </p>
 
       <h2>9. Ley y jurisdicción</h2>

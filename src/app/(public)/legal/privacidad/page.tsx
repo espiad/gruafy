@@ -18,8 +18,12 @@ export default function Privacidad() {
       <h2>2. Qué datos recolectamos</h2>
       <p>
         Datos identificatorios (nombre, DNI, contacto), datos del vehículo y de la grúa, documentación
-        de respaldo de proveedores, datos de ubicación durante el servicio y datos técnicos de uso. Los
-        pagos se procesan a través de Mercado Pago; gruafy no almacena datos de tarjetas.
+        de respaldo de proveedores, datos de ubicación durante el servicio y datos técnicos de uso.
+        También <strong>imágenes</strong>: la foto de la situación del vehículo que sube el cliente al
+        pedir, y la foto identificatoria del conductor. La foto de la situación se comparte con el gruero
+        asignado (o candidato) para evaluar el servicio; la del conductor se muestra al cliente para su
+        seguridad y la revisa un administrador. Los pagos se procesan a través de Mercado Pago; gruafy no
+        almacena datos de tarjetas.
       </p>
 
       <h2>3. Para qué los usamos</h2>

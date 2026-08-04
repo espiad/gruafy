@@ -29,7 +29,9 @@ export default function TerminosProveedores() {
       <p>
         Mantener la documentación vigente, prestar el servicio con profesionalismo, no delegar en
         terceros no habilitados, cumplir la normativa aplicable y compartir su ubicación durante el
-        servicio mientras la aplicación esté activa.
+        servicio mientras la aplicación esté activa. Cada conductor debe cargar una foto identificatoria
+        vigente (además de su licencia), que se muestra al cliente para su seguridad. No está permitido
+        el abandono de persona: el gruero no puede dejar a nadie en la vía pública durante el servicio.
       </p>
 
       <h2>4. Cobros y comisión</h2>
@@ -43,8 +45,11 @@ export default function TerminosProveedores() {
 
       <h2>5. Adicionales</h2>
       <p>
-        Los adicionales (peajes, espera, etc.) requieren motivo y, cuando corresponda, evidencia.
-        Importes que superen los topes configurados quedan sujetos a revisión de gruafy.
+        Los adicionales (peajes, espera, etc.) requieren motivo y, cuando corresponda, evidencia. Solo
+        pueden cargarse desde el catálogo definido por gruafy, respetando su modo (precio fijo, rango
+        permitido o libre) y el tope de cantidad por categoría. Cobrar montos fuera de esos límites, o
+        adicionales no prestados, constituye una falta grave que puede derivar en suspensión o baja.
+        Importes que superen los topes de auto-aprobación quedan sujetos a revisión de gruafy.
       </p>
 
       <h2>6. Responsabilidad</h2>
