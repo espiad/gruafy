@@ -12,9 +12,12 @@ const NAV = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-brand-cream/85 backdrop-blur supports-[backdrop-filter]:bg-brand-cream/70">
-      <div className="container flex h-16 items-center justify-between gap-4">
+      <div className="container flex h-16 items-center justify-between gap-2">
         <Link href="/" aria-label="Inicio gruafy" className="focus-ring rounded-md">
-          <Logo variant="green" />
+          {/* En mobile solo el isotipo (ahorra ancho para que entren los dos botones);
+              el lockup completo aparece desde sm. */}
+          <Logo variant="green" showWordmark={false} className="sm:hidden" />
+          <Logo variant="green" className="hidden sm:inline-flex" />
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {NAV.map((item) => (
