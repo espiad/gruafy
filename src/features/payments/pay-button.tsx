@@ -23,9 +23,14 @@ export function PayButton({ orderId, amount }: { orderId: string; amount: number
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId }),
       });
-      const data = (await res.json()) as { initPoint?: string; sandboxInitPoint?: string; error?: string };
+      const data = (await res.json()) as {
+        checkoutUrl?: string;
+        initPoint?: string;
+        sandboxInitPoint?: string;
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? 'No pudimos iniciar el pago');
-      const target = data.initPoint ?? data.sandboxInitPoint;
+      const target = data.checkoutUrl ?? data.initPoint ?? data.sandboxInitPoint;
       if (!target) throw new Error('No se pudo abrir Mercado Pago');
       window.location.href = target;
     } catch (err) {

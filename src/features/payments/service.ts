@@ -64,7 +64,19 @@ export async function createUpfrontPreference(orderId: string) {
     idempotency_key: idempotencyKey,
   });
 
-  return { preferenceId: result.id, initPoint: result.init_point, sandboxInitPoint: result.sandbox_init_point };
+  // En test dirigimos al entorno sandbox (ahí funcionan las tarjetas y usuarios de
+  // prueba); en producción, al checkout real. Evita el error "una de las partes es
+  // de prueba" que aparece al abrir el checkout de producción con credenciales test.
+  const checkoutUrl = isLiveMode()
+    ? result.init_point
+    : result.sandbox_init_point ?? result.init_point;
+
+  return {
+    preferenceId: result.id,
+    checkoutUrl,
+    initPoint: result.init_point,
+    sandboxInitPoint: result.sandbox_init_point,
+  };
 }
 
 const STATUS_MAP: Record<string, PaymentStatus> = {
