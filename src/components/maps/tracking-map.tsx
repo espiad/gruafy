@@ -41,10 +41,17 @@ function labelPin(letter: string, color: string) {
 }
 
 function truckMarker() {
+  // La grúa en el mapa se marca con el isotipo de gruafy (no un camión genérico):
+  // refuerza marca y es inconfundible. Círculo naranja + isotipo en ink.
   const el = document.createElement('div');
   el.innerHTML = `
-    <div style="width:40px;height:40px;border-radius:50%;background:#FF9E00;border:3px solid #001910;box-shadow:0 3px 12px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center">
-      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#001910" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+    <div style="width:42px;height:42px;border-radius:50%;background:#FF9E00;border:3px solid #001910;box-shadow:0 3px 12px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center">
+      <svg width="22" height="14" viewBox="0 0 366 202" fill="#001910" xmlns="http://www.w3.org/2000/svg" aria-label="gruafy">
+        <path d="M73.9153 201.874L0 100.899L34.8554 53.2444L143.321 201.874H73.9153Z"/>
+        <path d="M221.608 0.182817L221.547 0L108.572 154.419L143.183 201.89L290.953 0.0609387L221.608 0.182817Z"/>
+        <path d="M365.059 101.045L291.143 0.0692025H290.96L256.288 47.4186L330.142 148.699L365.059 101.045Z"/>
+        <path d="M330.201 148.679L291.141 202H221.735L295.529 101.146L330.201 148.679Z"/>
+      </svg>
     </div>`;
   return el;
 }

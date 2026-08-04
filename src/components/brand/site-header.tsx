@@ -28,7 +28,7 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+          <Button asChild variant="ghost" size="sm">
             <Link href="/ingresar">Ingresar</Link>
           </Button>
           <Button asChild size="sm">

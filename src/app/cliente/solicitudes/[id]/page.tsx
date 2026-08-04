@@ -132,13 +132,14 @@ export default async function SolicitudDetalle({
     etaMin = Math.max(1, Math.round(meters / 1000 / 30 * 60)); // ~30 km/h
   }
 
-  let hasReview = false;
+  let myReview: { rating: number; comment: string | null } | null = null;
   if (state === 'completed') {
-    const { count } = await supabase
+    const { data: r } = await supabase
       .from('reviews')
-      .select('*', { count: 'exact', head: true })
-      .eq('order_id', id);
-    hasReview = (count ?? 0) > 0;
+      .select('rating, comment')
+      .eq('order_id', id)
+      .maybeSingle();
+    myReview = r ?? null;
   }
 
   return (
@@ -185,9 +186,16 @@ export default async function SolicitudDetalle({
             )}
             {prepay.truckPatente && <span>· Patente {prepay.truckPatente}</span>}
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Vas a ver su ubicación en vivo y sus datos de contacto apenas confirmes el anticipo.
-          </p>
+          {prepay.rating_count >= 3 && prepay.rating_avg < 3.5 ? (
+            <p className="mt-3 rounded-md bg-warning/15 p-2.5 text-xs text-warning-foreground">
+              Esta grúa tiene una reputación baja ({prepay.rating_avg.toFixed(1)}★). Si preferís, podés
+              cancelar sin costo acá abajo y buscar otra.
+            </p>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Vas a ver su ubicación en vivo y sus datos de contacto apenas confirmes el anticipo.
+            </p>
+          )}
         </div>
       )}
 
@@ -297,7 +305,20 @@ export default async function SolicitudDetalle({
         />
       )}
 
-      {state === 'completed' && !hasReview && <ReviewForm orderId={order.id} />}
+      {state === 'completed' && !myReview && <ReviewForm orderId={order.id} />}
+
+      {/* La reseña que ya dejó el cliente: queda visible como registro. */}
+      {state === 'completed' && myReview && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-1 font-semibold">Tu reseña</h2>
+          <span className="inline-flex" aria-label={`${myReview.rating} de 5`}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Star key={n} className={n <= myReview!.rating ? 'h-4 w-4 fill-brand-orange text-brand-orange' : 'h-4 w-4 text-muted-foreground/40'} />
+            ))}
+          </span>
+          {myReview.comment && <p className="mt-2 text-sm text-muted-foreground">{myReview.comment}</p>}
+        </div>
+      )}
 
       {/* Todo lo secundario, plegado: no distrae del paso actual, pero está a un toque. */}
       <FocusDetails summary="Ver detalles del viaje">

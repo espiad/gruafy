@@ -6,6 +6,7 @@ import { formatCuit } from '@/lib/validation/argentina';
 import { formatDateTime } from '@/lib/format';
 import { DocReviewItem } from '@/features/admin/doc-review-item';
 import { ProviderDecision } from '@/features/admin/provider-decision';
+import { ProviderReviews } from '@/features/reviews/provider-reviews';
 
 export default async function AdminProveedorDetalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,11 +30,25 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
         <h1 className="font-display text-2xl">{provider.legal_name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">CUIT {formatCuit(provider.cuit)}</p>
         <p className="text-sm text-muted-foreground">{provider.contact_email} · {provider.contact_phone}</p>
+        <p className="mt-1 text-sm">
+          ★ <strong>{provider.rating_avg.toFixed(1)}</strong> · {provider.rating_count} reseña{provider.rating_count === 1 ? '' : 's'}
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">Alta: {formatDateTime(provider.created_at)}</p>
         {provider.rejection_reason && (
           <p className="mt-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive"><strong>Último rechazo:</strong> {provider.rejection_reason}</p>
         )}
       </div>
+
+      {/* Alerta de reputación: si acumula malas reseñas, el admin decide si suspende. */}
+      {provider.rating_count >= 3 && provider.rating_avg < 3.5 && provider.status === 'approved' && (
+        <div className="rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <p className="font-semibold text-destructive">Reputación baja</p>
+          <p className="mt-1 text-muted-foreground">
+            Promedio {provider.rating_avg.toFixed(1)}★ sobre {provider.rating_count} reseñas. Revisá los
+            comentarios más abajo y evaluá suspender la cuenta si corresponde.
+          </p>
+        </div>
+      )}
 
       <ProviderDecision providerId={provider.id} status={provider.status} />
 
@@ -79,6 +94,8 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
           {(!docs || docs.length === 0) && <li className="text-sm text-muted-foreground">El proveedor no subió documentación.</li>}
         </ul>
       </section>
+
+      <ProviderReviews providerId={provider.id} title="Reseñas recibidas" />
     </div>
   );
 }

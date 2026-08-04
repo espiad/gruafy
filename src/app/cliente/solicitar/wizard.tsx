@@ -402,13 +402,17 @@ export function SolicitarWizard({
               <p>· Viajan como máximo {maxPasajeros} personas con el vehículo.</p>
               <p>· Ni gruafy ni el gruero se responsabilizan por daños previos o roturas ajenas a la operación.</p>
             </div>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-1 accent-brand-orange" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-              Acepto los <a href="/legal/terminos-clientes" target="_blank" className="underline">términos</a> y el presupuesto. Entiendo que primero una grúa acepta y después pago el anticipo.
+            <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand-orange" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
+              <span>
+                Acepto los <a href="/legal/terminos-clientes" target="_blank" className="underline">términos</a> y el presupuesto. Entiendo que primero una grúa acepta y después pago el anticipo.
+              </span>
             </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-1 accent-brand-orange" checked={declared} onChange={(e) => setDeclared(e.target.checked)} />
-              Declaro que los datos son verídicos y que solicito el servicio de buena fe, resguardando la seguridad de quien me asiste.
+            <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand-orange" checked={declared} onChange={(e) => setDeclared(e.target.checked)} />
+              <span>
+                Declaro que los datos son verídicos y que solicito el servicio de buena fe, resguardando la seguridad de quien me asiste.
+              </span>
             </label>
           </div>
         )}

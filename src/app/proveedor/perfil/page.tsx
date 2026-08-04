@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/auth/session';
 import { formatCuit } from '@/lib/validation/argentina';
+import { ProviderReviews } from '@/features/reviews/provider-reviews';
 
 export const metadata: Metadata = { title: 'Perfil de la grúa' };
 
@@ -57,6 +58,8 @@ export default async function ProveedorPerfil() {
           ))}
         </ul>
       </div>
+
+      <ProviderReviews providerId={provider.id} title="Lo que dicen tus clientes" />
     </div>
   );
 }

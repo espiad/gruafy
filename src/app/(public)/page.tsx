@@ -43,7 +43,7 @@ export default function LandingPage() {
               <Button asChild size="lg" variant="secondary">
                 <Link href="/cliente/solicitar">Pedir una grúa<ArrowRight /></Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="border-brand-ink/30">
+              <Button asChild size="lg" variant="secondary" className="border border-transparent bg-white text-brand-ink shadow-sm hover:bg-white/90">
                 <Link href="/simulador">Simulá tu costo</Link>
               </Button>
             </div>
