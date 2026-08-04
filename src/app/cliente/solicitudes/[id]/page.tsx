@@ -17,6 +17,7 @@ import { Star, ShieldCheck } from 'lucide-react';
 import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
 import { InvoiceButtons } from '@/features/orders/invoice-buttons';
+import { InsuranceGuide } from '@/features/orders/insurance-guide';
 import { ShareTrackingButton } from '@/features/orders/share-tracking-button';
 import { haversineMeters } from '@/lib/geo/distance';
 import { formatDateTime, formatARS } from '@/lib/format';
@@ -133,13 +134,20 @@ export default async function SolicitudDetalle({
   }
 
   let myReview: { rating: number; comment: string | null } | null = null;
+  let vehicleLabel: string | null = null;
   if (state === 'completed') {
-    const { data: r } = await supabase
-      .from('reviews')
-      .select('rating, comment')
-      .eq('order_id', id)
-      .maybeSingle();
+    const [{ data: r }, { data: v }] = await Promise.all([
+      supabase.from('reviews').select('rating, comment').eq('order_id', id).maybeSingle(),
+      order.vehicle_id
+        ? supabase.from('vehicles').select('brand, model, year, patente, color').eq('id', order.vehicle_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
     myReview = r ?? null;
+    if (v) {
+      vehicleLabel = [v.color, v.brand, v.model, v.year, v.patente ? `(${v.patente})` : null]
+        .filter(Boolean)
+        .join(' ');
+    }
   }
 
   return (
@@ -296,13 +304,25 @@ export default async function SolicitudDetalle({
       )}
 
       {state === 'completed' && (
-        <InvoiceButtons
-          orderId={order.id}
-          providerPhone={provider?.contact_phone ?? null}
-          providerName={provider?.legal_name ?? null}
-          amountUpfront={order.amount_upfront}
-          amountService={pricing?.saldo_estimado_gruero ?? null}
-        />
+        <>
+          <InvoiceButtons
+            orderId={order.id}
+            providerPhone={provider?.contact_phone ?? null}
+            providerName={provider?.legal_name ?? null}
+            amountUpfront={order.amount_upfront}
+            amountService={pricing?.saldo_estimado_gruero ?? null}
+          />
+          <InsuranceGuide
+            orderId={order.id}
+            originAddress={order.origin_address}
+            destAddress={order.dest_address}
+            completedAt={order.completed_at}
+            vehicle={vehicleLabel}
+            providerName={provider?.legal_name ?? null}
+            amountUpfront={order.amount_upfront}
+            amountService={pricing?.saldo_estimado_gruero ?? null}
+          />
+        </>
       )}
 
       {state === 'completed' && !myReview && <ReviewForm orderId={order.id} />}

@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { type OrderState } from '@/features/orders/state-machine';
+import { OrderAutoRefresh } from '@/features/orders/order-live';
+import { CountAlert } from '@/features/orders/live-alert';
 
 async function count(table: string, filter?: (q: ReturnType<Awaited<ReturnType<typeof createClient>>['from']>) => unknown) {
   const supabase = await createClient();
@@ -42,8 +44,14 @@ export default async function AdminDashboard() {
       count('payments', (q) => q.eq('status', 'rejected')),
     ]);
 
+  // Novedades accionables: si suben, suena/vibra para que el admin no las pierda.
+  const actionable = searching + awaiting + providersPending;
+
   return (
     <div className="space-y-8">
+      {/* Se refresca solo y avisa cuando entran novedades para atender. */}
+      <OrderAutoRefresh active intervalMs={8000} />
+      <CountAlert count={actionable} message="🔔 Nueva actividad en gruafy (admin)" />
       <h1 className="font-display text-2xl">Dashboard</h1>
 
       <section>

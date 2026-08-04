@@ -41,3 +41,18 @@ export function StateAlert({ state }: { state: string }) {
   }, [state]);
   return null;
 }
+
+/**
+ * Avisa (beep + vibración + título) cuando un conteo accionable aumenta. Genérico:
+ * lo usa el admin para novedades (proveedores pendientes, servicios entrando).
+ */
+export function CountAlert({ count, message }: { count: number; message: string }) {
+  const prev = useRef<number | null>(null);
+  useEffect(() => {
+    if (prev.current !== null && count > prev.current) {
+      notify(message);
+    }
+    prev.current = count;
+  }, [count, message]);
+  return null;
+}
