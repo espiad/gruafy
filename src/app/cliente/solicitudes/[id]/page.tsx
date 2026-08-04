@@ -81,6 +81,7 @@ export default async function SolicitudDetalle({
   let provider: { legal_name: string; contact_phone: string | null; rating_avg: number } | null = null;
   let driverName: string | null = null;
   let truckPatente: string | null = null;
+  let driverPhotoUrl: string | null = null;
   let lastLoc: { lat: number; lng: number; created_at: string } | null = null;
   if (revealed && order.provider_id) {
     // Datos del proveedor/conductor/grúa: se revelan al pagar. Con service role
@@ -105,6 +106,22 @@ export default async function SolicitudDetalle({
         : null);
     driverName = drv?.full_name ?? null;
     truckPatente = trk?.patente ?? null;
+
+    // Foto del conductor (rescatista) para que el cliente vea a quién esperar.
+    if (order.driver_id) {
+      const { data: photoDoc } = await admin
+        .from('provider_documents')
+        .select('storage_path')
+        .eq('member_id', order.driver_id)
+        .eq('doc_type', 'foto')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (photoDoc?.storage_path) {
+        const { data: signed } = await admin.storage.from('documents').createSignedUrl(photoDoc.storage_path, 3600);
+        driverPhotoUrl = signed?.signedUrl ?? null;
+      }
+    }
   }
 
   // Confianza pre-pago: antes de que el cliente pague ya sabemos qué grúa aceptó.
@@ -294,11 +311,19 @@ export default async function SolicitudDetalle({
       {/* Contacto directo con la grúa: parte del objetivo una vez pagado. Compacto. */}
       {revealed && provider && (
         <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
-          <p className="text-sm">
-            <strong>{provider.legal_name}</strong> · ★ {provider.rating_avg.toFixed(1)}
-            {truckPatente ? ` · Grúa ${truckPatente}` : ''}
-          </p>
-          {driverName && <p className="text-xs text-muted-foreground">Conductor: {driverName}</p>}
+          <div className="flex items-center gap-3">
+            {driverPhotoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={driverPhotoUrl} alt={driverName ?? 'Conductor'} className="h-14 w-14 shrink-0 rounded-full border border-border object-cover" />
+            )}
+            <div>
+              <p className="text-sm">
+                <strong>{provider.legal_name}</strong> · ★ {provider.rating_avg.toFixed(1)}
+                {truckPatente ? ` · Grúa ${truckPatente}` : ''}
+              </p>
+              {driverName && <p className="text-xs text-muted-foreground">Te rescata: {driverName}</p>}
+            </div>
+          </div>
           {provider.contact_phone && (
             <div className="mt-3 flex gap-2">
               <a href={`tel:${provider.contact_phone.replace(/\D/g, '')}`} className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-input py-2 text-sm font-medium hover:bg-accent">

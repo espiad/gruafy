@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/auth/session';
 import { AddDriverForm } from '@/features/providers/add-driver-form';
 import { DriverLicenseUpload } from '@/features/providers/driver-license-upload';
+import { DriverPhotoUpload } from '@/features/providers/driver-photo-upload';
 
 export const metadata: Metadata = { title: 'Equipo' };
 
@@ -26,19 +27,22 @@ export default async function EquipoPage() {
     .eq('provider_id', provider.id)
     .order('created_at', { ascending: true });
 
-  // Licencias de conducir por miembro (legajo del equipo). La última cargada por
-  // conductor es la que mostramos.
-  const { data: licenses } = await supabase
+  // Documentos por miembro (legajo): licencia y foto. La última cargada por tipo.
+  const { data: docs } = await supabase
     .from('provider_documents')
-    .select('id, member_id, review_status, admin_note, created_at')
+    .select('id, member_id, doc_type, review_status, admin_note, created_at')
     .eq('provider_id', provider.id)
     .eq('owner_kind', 'driver')
-    .eq('doc_type', 'licencia')
+    .in('doc_type', ['licencia', 'foto'])
     .order('created_at', { ascending: false });
-  const licenseByMember = new Map<string, { id: string; review_status: 'pending' | 'approved' | 'rejected'; admin_note: string | null }>();
-  for (const l of licenses ?? []) {
-    if (l.member_id && !licenseByMember.has(l.member_id)) {
-      licenseByMember.set(l.member_id, { id: l.id, review_status: l.review_status, admin_note: l.admin_note });
+  type DocEntry = { id: string; review_status: 'pending' | 'approved' | 'rejected'; admin_note: string | null };
+  const licenseByMember = new Map<string, DocEntry>();
+  const photoByMember = new Map<string, DocEntry>();
+  for (const d of docs ?? []) {
+    if (!d.member_id) continue;
+    const target = d.doc_type === 'foto' ? photoByMember : licenseByMember;
+    if (!target.has(d.member_id)) {
+      target.set(d.member_id, { id: d.id, review_status: d.review_status, admin_note: d.admin_note });
     }
   }
 
@@ -65,7 +69,12 @@ export default async function EquipoPage() {
                 {[m.dni ? `DNI ${m.dni}` : null, m.phone].filter(Boolean).join(' · ') || 'Sin datos de contacto'}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <DriverPhotoUpload
+                providerId={provider.id}
+                memberId={m.id}
+                existing={photoByMember.get(m.id) ?? null}
+              />
               <DriverLicenseUpload
                 providerId={provider.id}
                 memberId={m.id}
