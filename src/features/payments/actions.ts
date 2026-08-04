@@ -3,23 +3,23 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { serverEnv } from '@/lib/env';
+import { paymentsMode } from '@/lib/env';
 
 const schema = z.object({ orderId: z.string().uuid() });
 
 /**
- * Pago SIMULADO para pruebas/QA. Solo funciona cuando Mercado Pago NO está
- * configurado (entorno de demo). En cuanto se cargan credenciales de MP, esta
- * acción se desactiva y el pago real toma su lugar. Deja registro claro de que
- * fue un pago de prueba (no es un cobro real).
+ * Pago SIMULADO para pruebas/QA y para la demo. Habilitado en modo `test`
+ * (aunque Mercado Pago esté configurado, para no depender de MP en vivo durante
+ * una presentación) y BLOQUEADO en producción, donde solo vale el pago real.
+ * Deja registro claro de que fue un pago de prueba (no es un cobro real).
  */
 export async function simulatePayment(input: z.infer<typeof schema>) {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: 'Datos inválidos' };
 
-  // Candado: si MP está configurado, no se permite simular (se usa el pago real).
-  if (serverEnv.mp().accessToken) {
-    return { ok: false as const, error: 'Mercado Pago está activo: usá el pago real.' };
+  // Candado: en producción nunca se simula, solo pago real.
+  if (paymentsMode() === 'production') {
+    return { ok: false as const, error: 'En producción el pago es real: usá Mercado Pago.' };
   }
 
   const supabase = await createClient();
@@ -51,17 +51,21 @@ export async function simulatePayment(input: z.infer<typeof schema>) {
     live_mode: false,
     normalized: { simulated: true, note: 'Pago de prueba (Mercado Pago no configurado)' },
   });
-  await admin
+  const { data: updated } = await admin
     .from('service_orders')
     .update({ state: 'paid', paid_at: new Date().toISOString() })
-    .eq('id', order.id);
-  await admin.from('order_events').insert({
-    order_id: order.id,
-    from_state: order.state,
-    to_state: 'paid',
-    actor_role: null,
-    event: 'Pago confirmado (prueba)',
-  });
+    .eq('id', order.id)
+    .in('state', ['awaiting_payment', 'payment_pending'])
+    .select('id');
+  if (updated && updated.length > 0) {
+    await admin.from('order_events').insert({
+      order_id: order.id,
+      from_state: order.state,
+      to_state: 'paid',
+      actor_role: null,
+      event: 'Pago confirmado (prueba)',
+    });
+  }
 
   revalidatePath(`/cliente/solicitudes/${order.id}`);
   return { ok: true as const };

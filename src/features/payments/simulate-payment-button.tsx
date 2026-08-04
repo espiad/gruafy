@@ -8,11 +8,21 @@ import { simulatePayment } from './actions';
 import { formatARS } from '@/lib/format';
 
 /**
- * Botón de pago de PRUEBA. Se muestra solo mientras Mercado Pago no está
- * configurado, para poder recorrer el flujo posterior al pago (servicio y
- * tracking) durante el desarrollo. No es un cobro real.
+ * Botón de pago de PRUEBA (no es un cobro real). En modo test permite recorrer
+ * el flujo posterior al pago sin depender de Mercado Pago en vivo.
+ * - `context='no-mp'`: MP no está configurado, es la única forma de avanzar.
+ * - `context='fallback'`: MP sí está activo, pero se ofrece como red de seguridad
+ *   (p. ej. para la demo, si el pago real falla). Se muestra más discreto.
  */
-export function SimulatePaymentButton({ orderId, amount }: { orderId: string; amount: number }) {
+export function SimulatePaymentButton({
+  orderId,
+  amount,
+  context = 'no-mp',
+}: {
+  orderId: string;
+  amount: number;
+  context?: 'no-mp' | 'fallback';
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +42,16 @@ export function SimulatePaymentButton({ orderId, amount }: { orderId: string; am
         <FlaskConical className="h-4 w-4" /> Modo prueba
       </p>
       <p className="text-sm text-muted-foreground">
-        Mercado Pago todavía no está configurado. Para seguir probando el servicio y el seguimiento,
-        podés simular el pago del anticipo ({formatARS(amount)}). No es un cobro real.
+        {context === 'fallback'
+          ? `¿El pago real no avanza? Podés simular el pago del anticipo (${formatARS(amount)}) para seguir la demo. No es un cobro real.`
+          : `Mercado Pago todavía no está configurado. Para seguir probando el servicio y el seguimiento, podés simular el pago del anticipo (${formatARS(amount)}). No es un cobro real.`}
       </p>
-      <Button onClick={pay} disabled={pending} className="w-full" variant="secondary">
+      <Button
+        onClick={pay}
+        disabled={pending}
+        className="w-full"
+        variant={context === 'fallback' ? 'outline' : 'secondary'}
+      >
         {pending && <Loader2 className="h-4 w-4 animate-spin" />} Simular pago y continuar
       </Button>
       {error && <p className="text-sm text-destructive">{error}</p>}

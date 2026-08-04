@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { PayButton } from '@/features/payments/pay-button';
 import { SimulatePaymentButton } from '@/features/payments/simulate-payment-button';
-import { serverEnv } from '@/lib/env';
+import { serverEnv, paymentsMode } from '@/lib/env';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map';
 import { ReviewForm } from '@/features/reviews/review-form';
@@ -68,6 +68,8 @@ export default async function SolicitudDetalle({
   const state = order.state as OrderState;
   const pricing = order.pricing as unknown as QuoteBreakdown | null;
   const revealed = REVEAL_STATES.includes(state);
+  const mpConfigured = Boolean(serverEnv.mp().accessToken);
+  const isProduction = paymentsMode() === 'production';
 
   const TRACK_STATES: OrderState[] = ['provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit'];
   const showMap = TRACK_STATES.includes(state);
@@ -209,8 +211,14 @@ export default async function SolicitudDetalle({
           </p>
           <div className="mt-4 space-y-3">
             <PaymentCountdown deadline={order.payment_deadline} />
-            {serverEnv.mp().accessToken ? (
-              <PayButton orderId={order.id} amount={order.amount_upfront} />
+            {mpConfigured ? (
+              <>
+                <PayButton orderId={order.id} amount={order.amount_upfront} />
+                {/* En modo test, red de seguridad para la demo (no cobra de verdad). */}
+                {!isProduction && (
+                  <SimulatePaymentButton orderId={order.id} amount={order.amount_upfront} context="fallback" />
+                )}
+              </>
             ) : (
               <SimulatePaymentButton orderId={order.id} amount={order.amount_upfront} />
             )}
