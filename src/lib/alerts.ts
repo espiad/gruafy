@@ -65,9 +65,18 @@ export function flashTitle(message: string, restoreAfterMs = 15000) {
   window.setTimeout(stop, restoreAfterMs);
 }
 
-/** Combo completo: beep + vibración + parpadeo del título. */
+/** Combo completo: beep + vibración + parpadeo del título + notificación del SO. */
 export function notify(message: string) {
   beep();
   vibrate();
   if (typeof document !== 'undefined' && document.hidden) flashTitle(message);
+  // Si el usuario dio permiso, además una notificación del sistema (se ve aunque
+  // esté en otra pestaña/app). El push con la app cerrada requiere backend aparte.
+  try {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification('gruafy', { body: message, icon: '/isologo.png' });
+    }
+  } catch {
+    /* sin soporte */
+  }
 }

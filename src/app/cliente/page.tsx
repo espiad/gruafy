@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { formatDateTime, formatARS } from '@/lib/format';
 import { isTerminal, type OrderState } from '@/features/orders/state-machine';
+import { HowTo } from '@/features/onboarding/how-to';
+import { AppNudges } from '@/features/pwa/app-nudges';
 
 const ONBOARDING = [
   { icon: PlusCircle, title: 'Cargá tu vehículo', text: 'Auto o moto, marca y modelo. Te ayudamos con las opciones.' },
@@ -77,6 +79,8 @@ export default async function ClienteHome() {
   // ---- Dashboard para usuarios que ya usaron gruafy ----
   return (
     <div className="space-y-8">
+      <AppNudges />
+      <HowTo role="cliente" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl">Hola{firstName ? `, ${firstName}` : ' de nuevo'}</h1>

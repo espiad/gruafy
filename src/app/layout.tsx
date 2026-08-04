@@ -25,6 +25,9 @@ export const metadata: Metadata = {
     'Como Uber, pero con grúas. Pedí una grúa desde el celu, seguila en vivo y resolvé sin letra chica. Asistencia vial on-demand en AMBA.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
   openGraph: { title: 'gruafy', description: 'Donde nadie quiere estar, ahí está gruafy.', type: 'website' },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'gruafy', statusBarStyle: 'default' },
+  icons: { apple: '/isologo.png' },
 };
 
 export const viewport: Viewport = {
