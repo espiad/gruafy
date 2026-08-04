@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getPlatformSettings } from '@/features/pricing/settings';
 import { SettingsForm } from '@/features/admin/settings-form';
+import { AdicionalesEditor } from '@/features/admin/adicionales-editor';
 import { paymentsMode, isDemoMode, publicEnv, hasSupabaseConfig } from '@/lib/env';
 
 export const metadata: Metadata = { title: 'Configuración' };
@@ -27,6 +28,8 @@ export default async function AdminConfiguracion() {
       </div>
 
       <SettingsForm initial={settings} />
+
+      <AdicionalesEditor initial={settings.adicionales} />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

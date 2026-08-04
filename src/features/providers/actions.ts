@@ -192,23 +192,73 @@ const extraSchema = z.object({
   amount: z.coerce.number().int().min(0),
 });
 
-/** Carga un adicional al servicio. Marca para revisión si supera el tope. */
+/**
+ * Carga un adicional al servicio, VALIDÁNDOLO contra el catálogo configurado por
+ * el admin (anti-fraude): la categoría debe existir y estar activa, el monto debe
+ * respetar el modo (libre / fijo / rango) y no puede superarse el tope de cantidad
+ * por categoría. Marca para revisión si supera el tope de auto-aprobación.
+ */
 export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Result> {
   const parsed = extraSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const provider = await providerOf(user.id);
+  if (!provider) return { ok: false, error: 'Sin proveedor' };
+
+  // La orden tiene que ser de este proveedor.
+  const { data: order } = await supabase
+    .from('service_orders')
+    .select('id, provider_id')
+    .eq('id', parsed.data.orderId)
+    .single();
+  if (!order || order.provider_id !== provider.id) return { ok: false, error: 'Este servicio no es tuyo' };
+
   const { getPlatformSettings } = await import('@/features/pricing/settings');
   const settings = await getPlatformSettings();
-  const status = parsed.data.amount > settings.extra_tope_auto ? 'needs_review' : 'auto_approved';
+
+  // Validación contra el catálogo.
+  const def = settings.adicionales.find((a) => a.key === parsed.data.category && a.activo);
+  if (!def) return { ok: false, error: 'Ese adicional no está habilitado' };
+
+  let amount = parsed.data.amount;
+  if (def.mode === 'fijo') {
+    amount = def.amount ?? 0; // el precio fijo lo pone el catálogo, no el gruero
+  } else if (def.mode === 'rango') {
+    const min = def.min ?? 0;
+    const max = def.max ?? Number.MAX_SAFE_INTEGER;
+    if (amount < min || amount > max) {
+      return { ok: false, error: `El monto debe estar entre ${min} y ${max}` };
+    }
+  }
+  // 'libre' no valida monto (queda a criterio, con el tope de auto-aprobación).
+
+  // Tope de cantidad por categoría en esta orden.
+  if (def.max_cantidad != null) {
+    const { count } = await supabase
+      .from('service_extras')
+      .select('*', { count: 'exact', head: true })
+      .eq('order_id', parsed.data.orderId)
+      .eq('category', def.label);
+    if ((count ?? 0) >= def.max_cantidad) {
+      return { ok: false, error: `Llegaste al máximo de ${def.max_cantidad} para "${def.label}"` };
+    }
+  }
+
+  const status = amount > settings.extra_tope_auto ? 'needs_review' : 'auto_approved';
   const { error } = await supabase.from('service_extras').insert({
     order_id: parsed.data.orderId,
-    category: parsed.data.category,
+    category: def.label, // guardamos la etiqueta legible para mostrar en la liquidación
     reason: parsed.data.reason,
-    amount: parsed.data.amount,
+    amount,
     status,
   });
   if (error) return { ok: false, error: 'No pudimos cargar el adicional' };
   revalidatePath(`/proveedor/servicios/${parsed.data.orderId}`);
+  revalidatePath(`/cliente/solicitudes/${parsed.data.orderId}`);
   return { ok: true };
 }
 

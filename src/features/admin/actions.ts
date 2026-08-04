@@ -123,11 +123,57 @@ export async function updateSettings(values: Record<string, unknown>): Promise<R
     data: { user },
   } = await supabase.auth.getUser();
 
+  // MERGE sobre lo existente (no reemplazo): así guardar los parámetros numéricos
+  // no pisa el catálogo de adicionales ni otras claves no incluidas en el form.
+  const mergedValues = { ...((current?.values as Record<string, unknown>) ?? {}), ...parsed.data };
   await supabase
     .from('platform_settings')
-    .update({ values: parsed.data as never, version: nextVersion, updated_by: user?.id ?? null, updated_at: new Date().toISOString() })
+    .update({ values: mergedValues as never, version: nextVersion, updated_by: user?.id ?? null, updated_at: new Date().toISOString() })
     .eq('id', 1);
-  await audit('update_settings', 'platform_settings', '1', current?.values, parsed.data);
+  await audit('update_settings', 'platform_settings', '1', current?.values, mergedValues);
+  revalidatePath('/admin/configuracion');
+  return { ok: true };
+}
+
+const adicionalSchema = z
+  .object({
+    key: z.string().min(1).max(40),
+    label: z.string().min(1).max(60),
+    mode: z.enum(['libre', 'fijo', 'rango']),
+    amount: z.coerce.number().int().min(0).optional(),
+    min: z.coerce.number().int().min(0).optional(),
+    max: z.coerce.number().int().min(0).optional(),
+    max_cantidad: z.coerce.number().int().min(1).max(20).optional(),
+    activo: z.boolean(),
+  })
+  .refine((a) => a.mode !== 'fijo' || (a.amount ?? 0) > 0, { message: 'El precio fijo debe ser mayor a 0' })
+  .refine((a) => a.mode !== 'rango' || ((a.min ?? 0) >= 0 && (a.max ?? 0) > (a.min ?? 0)), {
+    message: 'En rango, el máximo debe ser mayor al mínimo',
+  });
+
+/** Actualiza SOLO el catálogo de adicionales (merge sobre el resto de settings). */
+export async function updateAdicionales(catalog: unknown[]): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = z.array(adicionalSchema).max(20).safeParse(catalog);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Catálogo inválido' };
+
+  // Claves únicas.
+  const keys = parsed.data.map((a) => a.key);
+  if (new Set(keys).size !== keys.length) return { ok: false, error: 'Hay claves de adicional repetidas' };
+
+  const supabase = await createClient();
+  const { data: current } = await supabase.from('platform_settings').select('version, values').eq('id', 1).single();
+  const nextVersion = (current?.version ?? 0) + 1;
+  const mergedValues = { ...((current?.values as Record<string, unknown>) ?? {}), adicionales: parsed.data };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  await supabase
+    .from('platform_settings')
+    .update({ values: mergedValues as never, version: nextVersion, updated_by: user?.id ?? null, updated_at: new Date().toISOString() })
+    .eq('id', 1);
+  await audit('update_adicionales', 'platform_settings', '1', current?.values, mergedValues);
   revalidatePath('/admin/configuracion');
   return { ok: true };
 }

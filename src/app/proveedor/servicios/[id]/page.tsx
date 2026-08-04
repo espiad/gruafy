@@ -160,7 +160,7 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
               {(!extras || extras.length === 0) && <li className="text-sm text-muted-foreground">Sin adicionales.</li>}
             </ul>
             <div className="mt-4">
-              <ExtraForm orderId={order.id} categories={settings.extras_categorias} />
+              <ExtraForm orderId={order.id} adicionales={settings.adicionales} />
             </div>
           </div>
         )}

@@ -2,6 +2,23 @@ import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import { DEFAULT_PRICING, type PricingSettings } from './pricing';
 
+export type AdicionalMode = 'libre' | 'fijo' | 'rango';
+
+/** Definición de un tipo de adicional configurable por el admin (anti-fraude). */
+export interface AdicionalDef {
+  key: string;
+  label: string;
+  mode: AdicionalMode;
+  /** Precio fijo (modo 'fijo'). */
+  amount?: number;
+  /** Rango permitido (modo 'rango'). */
+  min?: number;
+  max?: number;
+  /** Máxima cantidad de líneas de este adicional por servicio. */
+  max_cantidad?: number;
+  activo: boolean;
+}
+
 export interface PlatformValues extends PricingSettings {
   max_pasajeros: number;
   oferta_proveedor_segundos: number;
@@ -9,6 +26,7 @@ export interface PlatformValues extends PricingSettings {
   radio_busqueda_km: number;
   extras_categorias: string[];
   extra_tope_auto: number;
+  adicionales: AdicionalDef[];
 }
 
 export const DEFAULT_PLATFORM: PlatformValues = {
@@ -29,6 +47,15 @@ export const DEFAULT_PLATFORM: PlatformValues = {
     'acceso_especial',
   ],
   extra_tope_auto: 60000,
+  // Catálogo de adicionales (anti-fraude). El gruero solo puede cargar de acá y
+  // dentro de los límites. El admin lo edita desde Configuración.
+  adicionales: [
+    { key: 'peaje', label: 'Peaje', mode: 'rango', min: 1000, max: 20000, max_cantidad: 5, activo: true },
+    { key: 'espera', label: 'Espera (por hora)', mode: 'rango', min: 5000, max: 30000, max_cantidad: 6, activo: true },
+    { key: 'zanja', label: 'Sacar de zanja / cuneta', mode: 'rango', min: 20000, max: 150000, max_cantidad: 1, activo: true },
+    { key: 'acceso', label: 'Acceso especial (cochera, subsuelo)', mode: 'rango', min: 5000, max: 80000, max_cantidad: 1, activo: true },
+    { key: 'otro', label: 'Otro (a convenir con el cliente)', mode: 'libre', max_cantidad: 3, activo: true },
+  ],
 };
 
 /** Carga los parámetros de la plataforma desde la DB, con fallback a defaults. */
