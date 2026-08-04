@@ -8,6 +8,7 @@ import { ExtraForm } from '@/features/providers/extra-form';
 import { LocationSender } from '@/features/tracking/location-sender';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { StatusHero } from '@/features/orders/status-hero';
+import { FocusDetails } from '@/components/ui/focus-details';
 import { SupportButton } from '@/features/support/support-button';
 import { getPlatformSettings } from '@/features/pricing/settings';
 import { formatARS, formatDistance } from '@/lib/format';
@@ -63,59 +64,42 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
     <div className="mx-auto max-w-2xl space-y-5">
       {!isTerminal(state) && <OrderAutoRefresh active intervalMs={4000} />}
 
-      <Link href="/proveedor" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Volver al panel
-      </Link>
-
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl">Servicio en curso</h1>
+        <Link href="/proveedor" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Volver al panel
+        </Link>
         <StatusBadge state={state} />
       </div>
 
+      {/* FOCO: el estado actual, grande. */}
       <StatusHero state={state} role="gruero" />
 
-      {/* Ruta */}
-      <div className="rounded-2xl border border-border bg-card p-5">
-        <p className="flex items-start gap-2 text-sm">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-green" />
-          <span><strong>Recogida:</strong> {paid ? order.origin_address : 'Zona aproximada (se revela al pagar)'}</span>
-        </p>
-        <p className="mt-1.5 flex items-start gap-2 text-sm">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
-          <span><strong>Destino:</strong> {order.dest_address}</span>
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Distancia {order.distance_meters ? formatDistance(order.distance_meters) : '—'}
-          {order.dollys > 0 && ` · ${order.dollys} dolly(s)`}
-          {order.wheels_blocked > 0 && ` · ${order.wheels_blocked} rueda(s) sin girar`}
-        </p>
-        {pricing?.saldo_estimado_gruero != null && (
-          <p className="mt-2 text-sm font-medium text-brand-green">
-            A cobrar al cliente al finalizar: {formatARS(pricing.saldo_estimado_gruero)}
-          </p>
-        )}
-        {mapsUrl && (
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="focus-ring mt-3 flex items-center justify-center gap-2 rounded-lg bg-brand-ink py-2.5 text-sm font-semibold text-brand-cream"
-          >
-            <Navigation className="h-4 w-4" /> Abrir ruta en Google Maps
-          </a>
-        )}
-      </div>
+      {/* Envío de ubicación en vivo (invisible) mientras el viaje está en curso. */}
+      {ACTIVE_TRACK.includes(state) && <LocationSender orderId={order.id} intervalMs={7000} />}
 
-      {/* A quién rescatás (post-pago): datos y contacto rápido */}
+      {/* LA acción de este paso: un solo botón grande. */}
+      <ServiceActionsPanel orderId={order.id} state={state} />
+
+      {/* Para cumplirla: navegar y contactar. Es el trabajo, va visible (post-pago). */}
+      {mapsUrl && (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="focus-ring flex items-center justify-center gap-2 rounded-xl bg-brand-ink py-3 text-sm font-semibold text-brand-cream"
+        >
+          <Navigation className="h-4 w-4" /> Abrir ruta en Google Maps
+        </a>
+      )}
+
       {paid && client && (
-        <div className="rounded-2xl border border-success/40 bg-success/5 p-5">
-          <h2 className="font-semibold">A quién vas a buscar</h2>
-          <p className="mt-2 flex items-center gap-2 text-sm">
+        <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
+          <p className="flex items-center gap-2 text-sm font-medium">
             <User className="h-4 w-4 text-brand-green" /> {[client.first_name, client.last_name].filter(Boolean).join(' ') || 'Cliente'}
           </p>
           {vehicle && (
-            <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <Car className="h-4 w-4" />
+            <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <Car className="h-3.5 w-3.5" />
               {vehicle.color ? `${vehicle.color} ` : ''}{vehicle.brand} {vehicle.model} {vehicle.year ?? ''} · patente {vehicle.patente}
             </p>
           )}
@@ -132,30 +116,50 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
         </div>
       )}
 
-      {ACTIVE_TRACK.includes(state) && <LocationSender orderId={order.id} intervalMs={7000} />}
-
-      <ServiceActionsPanel orderId={order.id} state={state} />
-
-      {paid && (
-        <section className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="font-semibold">Adicionales</h2>
-          <p className="text-sm text-muted-foreground">
-            Peajes, espera u otros. Llevan motivo. Sobre {formatARS(settings.extra_tope_auto)} van a revisión.
+      {/* Todo lo secundario, plegado: ruta escrita, monto a cobrar y adicionales. */}
+      <FocusDetails summary="Ruta, monto y adicionales">
+        <div>
+          <p className="flex items-start gap-2 text-sm">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-green" />
+            <span><strong>Recogida:</strong> {paid ? order.origin_address : 'Zona aproximada (se revela al pagar)'}</span>
           </p>
-          <ul className="mt-3 space-y-2">
-            {(extras ?? []).map((e) => (
-              <li key={e.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm">
-                <span><strong>{e.category}</strong> — {e.reason}</span>
-                <span className="tabular-nums">{formatARS(e.amount)}</span>
-              </li>
-            ))}
-            {(!extras || extras.length === 0) && <li className="text-sm text-muted-foreground">Sin adicionales.</li>}
-          </ul>
-          <div className="mt-4">
-            <ExtraForm orderId={order.id} categories={settings.extras_categorias} />
+          <p className="mt-1.5 flex items-start gap-2 text-sm">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
+            <span><strong>Destino:</strong> {order.dest_address}</span>
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Distancia {order.distance_meters ? formatDistance(order.distance_meters) : '—'}
+            {order.dollys > 0 && ` · ${order.dollys} dolly(s)`}
+            {order.wheels_blocked > 0 && ` · ${order.wheels_blocked} rueda(s) sin girar`}
+          </p>
+          {pricing?.saldo_estimado_gruero != null && (
+            <p className="mt-2 text-sm font-medium text-brand-green">
+              A cobrar al cliente al finalizar: {formatARS(pricing.saldo_estimado_gruero)}
+            </p>
+          )}
+        </div>
+
+        {paid && (
+          <div>
+            <p className="mb-1 text-sm font-medium">Adicionales</p>
+            <p className="text-xs text-muted-foreground">
+              Peajes, espera u otros. Llevan motivo. Sobre {formatARS(settings.extra_tope_auto)} van a revisión.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {(extras ?? []).map((e) => (
+                <li key={e.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm">
+                  <span><strong>{e.category}</strong> — {e.reason}</span>
+                  <span className="tabular-nums">{formatARS(e.amount)}</span>
+                </li>
+              ))}
+              {(!extras || extras.length === 0) && <li className="text-sm text-muted-foreground">Sin adicionales.</li>}
+            </ul>
+            <div className="mt-4">
+              <ExtraForm orderId={order.id} categories={settings.extras_categorias} />
+            </div>
           </div>
-        </section>
-      )}
+        )}
+      </FocusDetails>
 
       {/* Ayuda humana siempre a mano durante el servicio */}
       {!isTerminal(state) && <SupportButton role="gruero" orderId={order.id} stateLabel={STATE_LABELS[state]} />}

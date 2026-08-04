@@ -12,6 +12,7 @@ import { TrackingMap } from '@/components/maps/tracking-map';
 import { ReviewForm } from '@/features/reviews/review-form';
 import { OrderAutoRefresh, SearchingCard, PaymentCountdown, CancelAwaitingPayment } from '@/features/orders/order-live';
 import { StateAlert } from '@/features/orders/live-alert';
+import { FocusDetails } from '@/components/ui/focus-details';
 import { Star, ShieldCheck } from 'lucide-react';
 import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
@@ -141,26 +142,12 @@ export default async function SolicitudDetalle({
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <Link href="/cliente" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Volver
-      </Link>
-
+    <div className="mx-auto max-w-2xl space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl">Tu solicitud</h1>
+        <Link href="/cliente" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Volver
+        </Link>
         <StatusBadge state={state} />
-      </div>
-
-      <div className="rounded-2xl border border-border bg-card p-5">
-        <p className="flex items-start gap-2 text-sm">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
-          <span>
-            <strong>Origen:</strong> {order.origin_address ?? '—'}
-            <br />
-            <strong>Destino:</strong> {order.dest_address ?? '—'}
-          </span>
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">Creada el {formatDateTime(order.created_at)}</p>
       </div>
 
       {/* Actualiza la vista sola en todo estado activo (búsqueda → pago → tracking → cierre). */}
@@ -168,10 +155,11 @@ export default async function SolicitudDetalle({
       {/* Aviso perceptible (beep + vibración + título) al cambiar a un estado clave. */}
       <StateAlert state={state} />
 
-      {state !== 'searching_provider' && <StatusHero state={state} role="cliente" etaMin={etaMin} />}
-
-      {state === 'searching_provider' && (
+      {/* FOCO: el estado actual, grande, arriba de todo. Una sola cosa que mirar. */}
+      {state === 'searching_provider' ? (
         <SearchingCard orderId={order.id} deadline={order.offer_deadline} />
+      ) : (
+        <StatusHero state={state} role="cliente" etaMin={etaMin} />
       )}
 
       {/* Quién te va a asistir: reputación y patente, para que pagues con confianza. */}
@@ -260,33 +248,7 @@ export default async function SolicitudDetalle({
         </div>
       )}
 
-      {revealed && provider && (
-        <div className="rounded-2xl border border-success/40 bg-success/5 p-5">
-          <h2 className="font-semibold">Tu grúa</h2>
-          <p className="mt-1 text-sm">
-            <strong>{provider.legal_name}</strong> · ★ {provider.rating_avg.toFixed(1)}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {driverName ? `Conductor: ${driverName}` : ''}
-            {driverName && truckPatente ? ' · ' : ''}
-            {truckPatente ? `Grúa ${truckPatente}` : ''}
-          </p>
-          {provider.contact_phone && (
-            <div className="mt-3 flex gap-2">
-              <a href={`tel:${provider.contact_phone.replace(/\D/g, '')}`} className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-input py-2 text-sm font-medium hover:bg-accent">
-                <Phone className="h-4 w-4" /> Llamar
-              </a>
-              <a href={`https://wa.me/${provider.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-green py-2 text-sm font-semibold text-brand-cream">
-                <MessageCircle className="h-4 w-4" /> WhatsApp
-              </a>
-            </div>
-          )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            El seguimiento en vivo se actualiza solo mientras la grúa comparte su ubicación.
-          </p>
-        </div>
-      )}
-
+      {/* Seguimiento en vivo: el mapa ES el objetivo mientras la grúa se mueve. */}
       {showMap && (
         <>
           <TrackingMap
@@ -297,6 +259,27 @@ export default async function SolicitudDetalle({
           />
           <ShareTrackingButton orderId={order.id} />
         </>
+      )}
+
+      {/* Contacto directo con la grúa: parte del objetivo una vez pagado. Compacto. */}
+      {revealed && provider && (
+        <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
+          <p className="text-sm">
+            <strong>{provider.legal_name}</strong> · ★ {provider.rating_avg.toFixed(1)}
+            {truckPatente ? ` · Grúa ${truckPatente}` : ''}
+          </p>
+          {driverName && <p className="text-xs text-muted-foreground">Conductor: {driverName}</p>}
+          {provider.contact_phone && (
+            <div className="mt-3 flex gap-2">
+              <a href={`tel:${provider.contact_phone.replace(/\D/g, '')}`} className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-input py-2 text-sm font-medium hover:bg-accent">
+                <Phone className="h-4 w-4" /> Llamar
+              </a>
+              <a href={`https://wa.me/${provider.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-green py-2 text-sm font-semibold text-brand-cream">
+                <MessageCircle className="h-4 w-4" /> WhatsApp
+              </a>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Ayuda humana durante estados activos (incl. esperas que solo admin cancela). */}
@@ -316,43 +299,51 @@ export default async function SolicitudDetalle({
 
       {state === 'completed' && !hasReview && <ReviewForm orderId={order.id} />}
 
-      {pricing && state !== 'searching_provider' && (
-        <details className="rounded-2xl border border-border bg-card p-5">
-          <summary className="cursor-pointer font-medium">Ver desglose del presupuesto</summary>
-          <div className="mt-4">
+      {/* Todo lo secundario, plegado: no distrae del paso actual, pero está a un toque. */}
+      <FocusDetails summary="Ver detalles del viaje">
+        <div>
+          <p className="flex items-start gap-2 text-sm">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
+            <span>
+              <strong>Origen:</strong> {order.origin_address ?? '—'}
+              <br />
+              <strong>Destino:</strong> {order.dest_address ?? '—'}
+            </span>
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">Creada el {formatDateTime(order.created_at)}</p>
+          {order.amount_upfront != null && (
+            <p className="mt-1 text-xs text-muted-foreground">Anticipo pagado a gruafy: {formatARS(order.amount_upfront)}</p>
+          )}
+        </div>
+
+        {pricing && (
+          <div>
+            <p className="mb-2 text-sm font-medium">Desglose del presupuesto</p>
             <QuoteBreakdownCard quote={pricing} />
           </div>
-        </details>
-      )}
+        )}
 
-      {state !== 'searching_provider' && (
-      <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Historial</h2>
-        <ol className="space-y-2">
-          {(events ?? []).map((e) => (
-            <li key={e.id} className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-sm">
-              <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-brand-orange" />
-              <div>
-                <p className="font-medium">{e.event}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDateTime(e.created_at)}
-                  {e.to_state ? ` · ${STATE_LABELS[e.to_state as OrderState]}` : ''}
-                </p>
-              </div>
-            </li>
-          ))}
-          {(!events || events.length === 0) && (
-            <li className="text-sm text-muted-foreground">Sin eventos todavía.</li>
-          )}
-        </ol>
-      </section>
-      )}
-
-      {order.amount_upfront != null && state !== 'searching_provider' && (
-        <p className="text-center text-xs text-muted-foreground">
-          Anticipo: {formatARS(order.amount_upfront)}
-        </p>
-      )}
+        <div>
+          <p className="mb-2 text-sm font-medium">Historial</p>
+          <ol className="space-y-2">
+            {(events ?? []).map((e) => (
+              <li key={e.id} className="flex items-start gap-3 rounded-lg border border-border p-3 text-sm">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-brand-orange" />
+                <div>
+                  <p className="font-medium">{e.event}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDateTime(e.created_at)}
+                    {e.to_state ? ` · ${STATE_LABELS[e.to_state as OrderState]}` : ''}
+                  </p>
+                </div>
+              </li>
+            ))}
+            {(!events || events.length === 0) && (
+              <li className="text-sm text-muted-foreground">Sin eventos todavía.</li>
+            )}
+          </ol>
+        </div>
+      </FocusDetails>
     </div>
   );
 }
