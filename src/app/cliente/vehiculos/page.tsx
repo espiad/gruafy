@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
-import { Car } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { AddVehicleForm, DeleteVehicleButton } from '@/features/vehicles/vehicle-manager';
+import { AddVehicleForm, VehicleCard } from '@/features/vehicles/vehicle-manager';
 
 export const metadata: Metadata = { title: 'Mis vehículos' };
 
-const GEARBOX = { manual: 'Caja manual', automatic: 'Caja automática', unknown: 'Caja sin especificar' };
 const MAX_VEHICLES = 3;
 
 export default async function VehiculosPage() {
@@ -35,18 +33,7 @@ export default async function VehiculosPage() {
       {vehicles && vehicles.length > 0 ? (
         <ul className="grid gap-3 sm:grid-cols-2">
           {vehicles.map((v) => (
-            <li key={v.id} className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-start justify-between">
-                <Car className="h-5 w-5 text-brand-orange" />
-                <DeleteVehicleButton vehicleId={v.id} label={`${v.brand} ${v.model}`} />
-              </div>
-              <p className="mt-2 font-semibold">{v.brand} {v.model} {v.year ?? ''}</p>
-              <p className="text-sm text-muted-foreground">
-                {v.patente} · {GEARBOX[v.gearbox]}
-                {v.color ? ` · ${v.color}` : ''}
-              </p>
-              <p className="text-xs text-muted-foreground">{v.has_keys ? 'Con llaves' : 'Sin llaves'}</p>
-            </li>
+            <VehicleCard key={v.id} vehicle={v} />
           ))}
         </ul>
       ) : (

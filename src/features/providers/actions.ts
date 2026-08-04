@@ -340,6 +340,78 @@ export async function addDriver(input: z.infer<typeof driverSchema>): Promise<Re
   return { ok: true };
 }
 
+const editCompanySchema = z.object({
+  legal_name: z.string().min(2, 'Ingresá la razón social'),
+  cuit: z.string().refine(isValidCuit, 'CUIT inválido'),
+  contact_email: z.string().email('Email inválido').optional().or(z.literal('')),
+  contact_phone: z.string().min(6, 'Teléfono inválido'),
+});
+
+/** Edita los datos de la empresa del proveedor (razón social, CUIT, contacto). */
+export async function editProviderCompany(input: z.infer<typeof editCompanySchema>): Promise<Result> {
+  const parsed = editCompanySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const provider = await providerOf(user.id);
+  if (!provider) return { ok: false, error: 'Sin proveedor' };
+
+  const { error } = await supabase
+    .from('provider_accounts')
+    .update({
+      legal_name: parsed.data.legal_name,
+      cuit: parsed.data.cuit.replace(/\D/g, ''),
+      contact_email: parsed.data.contact_email || null,
+      contact_phone: parsed.data.contact_phone,
+    })
+    .eq('id', provider.id);
+  if (error) return { ok: false, error: 'No pudimos guardar los cambios' };
+  revalidatePath('/proveedor/perfil');
+  return { ok: true };
+}
+
+const editTruckSchema = z.object({
+  truckId: z.string().uuid(),
+  patente: z.string().transform(normalizePatente).refine(isValidPatente, 'Patente de grúa inválida'),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  year: z.coerce.number().int().optional().catch(undefined),
+  capacity: z.string().optional(),
+});
+
+/** Edita los datos de una grúa del proveedor. */
+export async function editTruck(input: z.infer<typeof editTruckSchema>): Promise<Result> {
+  const parsed = editTruckSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const provider = await providerOf(user.id);
+  if (!provider) return { ok: false, error: 'Sin proveedor' };
+
+  const { data: updated, error } = await supabase
+    .from('tow_trucks')
+    .update({
+      patente: parsed.data.patente,
+      brand: parsed.data.brand || null,
+      model: parsed.data.model || null,
+      year: parsed.data.year ?? null,
+      capacity: parsed.data.capacity || null,
+    })
+    .eq('id', parsed.data.truckId)
+    .eq('provider_id', provider.id)
+    .select('id');
+  if (error) return { ok: false, error: 'No pudimos guardar la grúa' };
+  if (!updated || updated.length === 0) return { ok: false, error: 'Grúa no encontrada' };
+  revalidatePath('/proveedor/perfil');
+  return { ok: true };
+}
+
 /** Envía la cuenta a revisión del administrador. */
 export async function submitProviderForReview(): Promise<Result> {
   const supabase = await createClient();

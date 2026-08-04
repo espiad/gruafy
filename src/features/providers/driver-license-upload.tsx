@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, CheckCircle2, Clock, XCircle, Trash2, Loader2, IdCard } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Trash2, Loader2, IdCard } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { hasSupabaseConfig } from '@/lib/env';
 import { recordDocument, deleteDocument } from './document-actions';
