@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { formatCuit } from '@/lib/validation/argentina';
 import { formatDateTime } from '@/lib/format';
+import { OrderAutoRefresh } from '@/features/orders/order-live';
 import type { ProviderStatus } from '@/types/database';
 
 export const metadata: Metadata = { title: 'Proveedores' };
@@ -42,6 +43,8 @@ export default async function AdminProveedores({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-6">
+      {/* Nuevas altas aparecen solas, sin F5. */}
+      <OrderAutoRefresh active intervalMs={10000} />
       <h1 className="font-display text-2xl">Proveedores</h1>
       <div className="flex gap-2">
         {FILTERS.map((f) => (

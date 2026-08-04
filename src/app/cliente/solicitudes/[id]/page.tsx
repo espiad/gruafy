@@ -18,6 +18,7 @@ import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
 import { InvoiceButtons } from '@/features/orders/invoice-buttons';
 import { InsuranceGuide } from '@/features/orders/insurance-guide';
+import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
 import { ShareTrackingButton } from '@/features/orders/share-tracking-button';
 import { haversineMeters } from '@/lib/geo/distance';
 import { formatDateTime, formatARS } from '@/lib/format';
@@ -124,6 +125,18 @@ export default async function SolicitudDetalle({
         truckPatente: trk?.patente ?? null,
       };
     }
+  }
+
+  // Adicionales del servicio, para la liquidación (qué pagarle al gruero).
+  const SETTLEMENT_STATES: OrderState[] = ['provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending', 'completed'];
+  let extras: SettlementExtra[] = [];
+  if (SETTLEMENT_STATES.includes(state)) {
+    const { data } = await supabase
+      .from('service_extras')
+      .select('id, category, reason, amount, status')
+      .eq('order_id', id)
+      .order('created_at', { ascending: true });
+    extras = (data ?? []) as SettlementExtra[];
   }
 
   // ETA aproximado a la recogida mientras la grúa va en camino (última posición → A).
@@ -296,6 +309,16 @@ export default async function SolicitudDetalle({
             </div>
           )}
         </div>
+      )}
+
+      {/* Liquidación: qué pagarle al gruero (saldo + adicionales), con total claro. */}
+      {SETTLEMENT_STATES.includes(state) && pricing && (
+        <SettlementCard
+          saldoBase={pricing.saldo_estimado_gruero ?? 0}
+          extras={extras}
+          role="cliente"
+          anticipo={order.amount_upfront}
+        />
       )}
 
       {/* Ayuda humana durante estados activos (incl. esperas que solo admin cancela). */}

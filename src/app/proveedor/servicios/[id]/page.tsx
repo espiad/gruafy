@@ -9,6 +9,7 @@ import { LocationSender } from '@/features/tracking/location-sender';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { StatusHero } from '@/features/orders/status-hero';
 import { FocusDetails } from '@/components/ui/focus-details';
+import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
 import { SupportButton } from '@/features/support/support-button';
 import { getPlatformSettings } from '@/features/pricing/settings';
 import { formatARS, formatDistance } from '@/lib/format';
@@ -80,6 +81,15 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
       {/* LA acción de este paso: un solo botón grande. */}
       <ServiceActionsPanel orderId={order.id} state={state} />
 
+      {/* Liquidación: total a cobrarle al cliente (saldo + adicionales aprobados). */}
+      {paid && pricing?.saldo_estimado_gruero != null && (
+        <SettlementCard
+          saldoBase={pricing.saldo_estimado_gruero}
+          extras={(extras ?? []) as SettlementExtra[]}
+          role="gruero"
+        />
+      )}
+
       {/* Para cumplirla: navegar y contactar. Es el trabajo, va visible (post-pago). */}
       {mapsUrl && (
         <a
@@ -132,11 +142,6 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
             {order.dollys > 0 && ` · ${order.dollys} dolly(s)`}
             {order.wheels_blocked > 0 && ` · ${order.wheels_blocked} rueda(s) sin girar`}
           </p>
-          {pricing?.saldo_estimado_gruero != null && (
-            <p className="mt-2 text-sm font-medium text-brand-green">
-              A cobrar al cliente al finalizar: {formatARS(pricing.saldo_estimado_gruero)}
-            </p>
-          )}
         </div>
 
         {paid && (

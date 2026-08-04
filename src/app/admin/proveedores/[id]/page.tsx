@@ -7,6 +7,7 @@ import { formatDateTime } from '@/lib/format';
 import { DocReviewItem } from '@/features/admin/doc-review-item';
 import { ProviderDecision } from '@/features/admin/provider-decision';
 import { ProviderReviews } from '@/features/reviews/provider-reviews';
+import { OrderAutoRefresh } from '@/features/orders/order-live';
 
 export default async function AdminProveedorDetalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,6 +23,7 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <OrderAutoRefresh active intervalMs={8000} />
       <Link href="/admin/proveedores" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Volver
       </Link>
