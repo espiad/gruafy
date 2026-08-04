@@ -59,17 +59,28 @@ export async function dispatchOrder(orderId: string): Promise<{ offers: number }
   await admin.from('provider_offers').insert(rows);
 
   // Notifica a todos los dueños (por usuario, no por cuenta).
+  const ownerIds = providers.map((p) => p.owner_id).filter(Boolean) as string[];
   await admin.from('notifications').insert(
-    providers
-      .filter((p) => p.owner_id)
-      .map((p) => ({
-        user_id: p.owner_id as string,
-        type: 'new_offer',
-        title: 'Nuevo pedido disponible',
-        body: 'Tenés 2 minutos para aceptar un servicio.',
-        link: '/proveedor',
-      })),
+    ownerIds.map((id) => ({
+      user_id: id,
+      type: 'new_offer',
+      title: 'Nuevo pedido disponible',
+      body: 'Tenés 2 minutos para aceptar un servicio.',
+      link: '/proveedor',
+    })),
   );
+
+  // Push a los grueros: entró un pedido nuevo (aunque tengan la app cerrada).
+  try {
+    const { sendPushToUser } = await import('@/lib/push/send');
+    await Promise.all(
+      ownerIds.map((id) =>
+        sendPushToUser(id, { title: '🚗 Nuevo pedido en gruafy', body: 'Tenés 2 minutos para aceptarlo.', url: '/proveedor' }),
+      ),
+    );
+  } catch {
+    /* best-effort */
+  }
 
   return { offers: rows.length };
 }

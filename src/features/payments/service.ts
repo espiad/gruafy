@@ -172,6 +172,18 @@ export async function reconcilePayment(mpPaymentId: string): Promise<void> {
         event: 'Pago confirmado',
         meta: { mp_payment_id: String(mpPaymentId) },
       });
+      // Push al gruero: el cliente pagó, ya puede salir.
+      if (order.provider_id) {
+        try {
+          const { data: prov } = await admin.from('provider_accounts').select('owner_id').eq('id', order.provider_id).single();
+          if (prov?.owner_id) {
+            const { sendPushToUser } = await import('@/lib/push/send');
+            await sendPushToUser(prov.owner_id, { title: '💳 El cliente pagó', body: 'Ya podés salir a buscarlo.', url: `/proveedor/servicios/${orderId}` });
+          }
+        } catch {
+          /* best-effort */
+        }
+      }
     }
   } else if (status === 'pending') {
     await admin

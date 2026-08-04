@@ -296,6 +296,16 @@ export type AdminAuditLogRow = {
   created_at: string;
 };
 
+export type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  created_at: string;
+};
+
 type Tbl<Row> = {
   Row: Row;
   Insert: Partial<Row> & { [key: string]: unknown };
@@ -325,6 +335,7 @@ export type Database = {
       platform_settings: Tbl<PlatformSettingsRow>;
       order_events: Tbl<OrderEventRow>;
       admin_audit_logs: Tbl<AdminAuditLogRow>;
+      push_subscriptions: Tbl<PushSubscriptionRow>;
     };
     Views: Record<string, never>;
     Functions: {

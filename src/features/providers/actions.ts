@@ -104,6 +104,21 @@ export async function acceptOffer(orderId: string, driverId?: string): Promise<R
       .eq('provider_id', provider.id);
   }
 
+  // Push al cliente: una grúa aceptó, hay que pagar el anticipo.
+  try {
+    const { data: ord } = await supabase.from('service_orders').select('client_id').eq('id', orderId).single();
+    if (ord?.client_id) {
+      const { sendPushToUser } = await import('@/lib/push/send');
+      await sendPushToUser(ord.client_id, {
+        title: '¡Una grúa aceptó! 🚗',
+        body: 'Reservá con el anticipo para confirmar.',
+        url: `/cliente/solicitudes/${orderId}`,
+      });
+    }
+  } catch {
+    /* best-effort */
+  }
+
   revalidatePath('/proveedor');
   revalidatePath(`/proveedor/servicios/${orderId}`);
   return { ok: true, value: true };
@@ -140,7 +155,7 @@ export async function advanceOrderState(orderId: string, to: OrderState): Promis
 
   const { data: order } = await supabase
     .from('service_orders')
-    .select('id, state, provider_id')
+    .select('id, state, provider_id, client_id')
     .eq('id', orderId)
     .single();
   if (!order) return { ok: false, error: 'Orden no encontrada' };
@@ -180,6 +195,25 @@ export async function advanceOrderState(orderId: string, to: OrderState): Promis
     actor_id: user.id,
     event: transition.event,
   });
+
+  // Push al cliente con el cambio de estado.
+  const CLIENT_PUSH: Partial<Record<OrderState, string>> = {
+    provider_en_route: 'Tu grúa va en camino 🚚 — recordá: máx. 2 personas',
+    provider_arrived: 'Tu grúa llegó 📍',
+    vehicle_loaded: 'Cargando tu vehículo 🔧',
+    in_transit: 'En camino al destino 🛣️',
+    completion_pending: 'Llegaron al destino 🏁',
+    completed: 'Servicio finalizado ⭐ Dejá tu reseña',
+  };
+  if (order.client_id && CLIENT_PUSH[to]) {
+    try {
+      const { sendPushToUser } = await import('@/lib/push/send');
+      await sendPushToUser(order.client_id, { title: 'gruafy', body: CLIENT_PUSH[to]!, url: `/cliente/solicitudes/${orderId}` });
+    } catch {
+      /* best-effort */
+    }
+  }
+
   revalidatePath(`/proveedor/servicios/${orderId}`);
   revalidatePath(`/cliente/solicitudes/${orderId}`);
   return { ok: true };

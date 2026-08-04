@@ -2,8 +2,37 @@
 
 import { useEffect, useState } from 'react';
 import { Bell, Share, Plus, X, Download } from 'lucide-react';
+import { savePushSubscription } from '@/features/push/actions';
 
 type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+
+function urlBase64ToUint8Array(base64: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+/** Suscribe el navegador a push (con la clave VAPID) y guarda la suscripción. */
+async function subscribeToPush() {
+  try {
+    const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!key || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    const sub =
+      existing ??
+      (await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
+      }));
+    await savePushSubscription(sub.toJSON(), navigator.userAgent);
+  } catch {
+    /* sin push disponible: seguimos con las notificaciones en primer plano */
+  }
+}
 
 function isStandalone() {
   if (typeof window === 'undefined') return false;
@@ -35,6 +64,8 @@ export function AppNudges() {
     if ('Notification' in window) {
       setNotifState(Notification.permission);
       setNotifDismissed(Notification.permission !== 'default' || localStorage.getItem('gruafy_notif_nudge') === '1');
+      // Si ya dio permiso antes, aseguramos que exista la suscripción de push.
+      if (Notification.permission === 'granted') void subscribeToPush();
     }
     setInstallDismissed(isStandalone() || localStorage.getItem('gruafy_install_nudge') === '1');
 
@@ -52,6 +83,7 @@ export function AppNudges() {
     setNotifState(res);
     setNotifDismissed(true);
     if (res === 'granted') {
+      void subscribeToPush();
       try {
         new Notification('gruafy', { body: '¡Listo! Te vamos a avisar de las novedades.', icon: '/isologo.png' });
       } catch {
