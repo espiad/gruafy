@@ -31,6 +31,7 @@ export function AyudaSearch({ articles }: { articles: SupportArticle[] }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar en la ayuda…"
+          aria-label="Buscar en el centro de ayuda"
           className="focus-ring h-11 flex-1 rounded-md border border-input bg-background px-3 text-sm"
         />
         <div className="flex gap-2">
