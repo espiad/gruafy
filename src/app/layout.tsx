@@ -27,7 +27,11 @@ export const metadata: Metadata = {
   openGraph: { title: 'gruafy', description: 'Donde nadie quiere estar, ahí está gruafy.', type: 'website' },
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'gruafy', statusBarStyle: 'default' },
-  icons: { apple: '/isologo.png' },
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    shortcut: '/icon.svg',
+    apple: '/isologo.png',
+  },
 };
 
 export const viewport: Viewport = {

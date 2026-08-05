@@ -8,6 +8,7 @@ import { DocReviewItem } from '@/features/admin/doc-review-item';
 import { ProviderDecision } from '@/features/admin/provider-decision';
 import { ProviderReviews } from '@/features/reviews/provider-reviews';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
+import { AdminPasswordReset } from '@/features/admin/admin-password-reset';
 
 export default async function AdminProveedorDetalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -53,6 +54,13 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
       )}
 
       <ProviderDecision providerId={provider.id} status={provider.status} />
+
+      {provider.owner_id && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-2 text-sm font-semibold">Soporte de cuenta</h2>
+          <AdminPasswordReset userId={provider.owner_id} label={provider.legal_name} />
+        </div>
+      )}
 
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><Truck className="h-4 w-4" /> Grúas</h2>

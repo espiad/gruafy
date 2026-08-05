@@ -115,7 +115,27 @@ export function AppNudges() {
   const showNotif = notifState === 'default' && !notifDismissed;
   const showInstall = !standalone && !installDismissed && (deferred !== null || isIOS());
 
-  if (!showNotif && !showInstall) return null;
+  function reopen() {
+    localStorage.removeItem('gruafy_notif_nudge');
+    localStorage.removeItem('gruafy_install_nudge');
+    setNotifDismissed(false);
+    setInstallDismissed(false);
+  }
+
+  if (!showNotif && !showInstall) {
+    // Si el usuario los cerró pero todavía puede activarlos, dejamos un acceso chico
+    // (no es una única chance). Si ya activó/instaló todo, no mostramos nada.
+    const canReopen = (notifState === 'default' && notifDismissed) || (!standalone && installDismissed && (deferred !== null || isIOS()));
+    if (!canReopen) return null;
+    return (
+      <button
+        onClick={reopen}
+        className="focus-ring inline-flex items-center gap-1.5 rounded-md text-xs text-muted-foreground hover:text-brand-green"
+      >
+        <Bell className="h-3.5 w-3.5" /> Activar avisos / instalar app
+      </button>
+    );
+  }
 
   return (
     <div className="space-y-3">

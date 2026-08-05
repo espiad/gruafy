@@ -178,6 +178,24 @@ export async function updateAdicionales(catalog: unknown[]): Promise<Result> {
   return { ok: true };
 }
 
+const setPasswordSchema = z.object({
+  userId: z.string().uuid(),
+  password: z.string().min(8, 'Mínimo 8 caracteres'),
+});
+
+/** El admin cambia la contraseña de un usuario (soporte). Usa la Admin Auth API. */
+export async function adminSetPassword(input: z.infer<typeof setPasswordSchema>): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = setPasswordSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(parsed.data.userId, { password: parsed.data.password });
+  if (error) return { ok: false, error: 'No pudimos cambiar la contraseña' };
+  await audit('set_password', 'auth.users', parsed.data.userId, null, { changed: true });
+  return { ok: true };
+}
+
 /**
  * Reembolso total de un pago aprobado (solo admin, con confirmación explícita).
  * Registra el reembolso, lo procesa en Mercado Pago si hay credenciales, y audita.

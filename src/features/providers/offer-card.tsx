@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, MapPin, Flag, Timer, Car, Bike, User } from 'lucide-react';
+import { Loader2, MapPin, Flag, Timer, Car, Bike, User, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { acceptOffer, rejectOffer } from './actions';
 import { formatARS, formatDistance } from '@/lib/format';
@@ -100,12 +100,19 @@ export function OfferCard(props: Props) {
       </div>
 
       {props.situationPhotoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={props.situationPhotoUrl}
-          alt="Situación del vehículo"
-          className="mt-3 max-h-40 w-full rounded-lg border border-border object-cover"
-        />
+        <a
+          href={props.situationPhotoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="focus-ring group relative mt-3 block overflow-hidden rounded-lg border border-border"
+          title="Tocá para ver la foto completa"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={props.situationPhotoUrl} alt="Situación del vehículo" className="max-h-40 w-full object-cover" />
+          <span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-md bg-brand-ink/80 px-2 py-1 text-xs font-medium text-brand-cream">
+            <Maximize2 className="h-3 w-3" /> Ver foto
+          </span>
+        </a>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

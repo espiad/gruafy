@@ -367,41 +367,47 @@ export default async function SolicitudDetalle({
         </>
       )}
 
+      {/* Cierre ordenado, un paso a la vez: (1) el resumen ya está arriba (estado +
+          liquidación), (2) pedimos la reseña, (3) recién después los comprobantes y
+          el reintegro del seguro, plegados para no abrumar. */}
       {state === 'completed' && (
         <>
-          <InvoiceButtons
-            orderId={order.id}
-            providerPhone={provider?.contact_phone ?? null}
-            providerName={provider?.legal_name ?? null}
-            amountUpfront={order.amount_upfront}
-            amountService={pricing?.saldo_estimado_gruero ?? null}
-          />
-          <InsuranceGuide
-            orderId={order.id}
-            originAddress={order.origin_address}
-            destAddress={order.dest_address}
-            completedAt={order.completed_at}
-            vehicle={vehicleLabel}
-            providerName={provider?.legal_name ?? null}
-            amountUpfront={order.amount_upfront}
-            amountService={pricing?.saldo_estimado_gruero ?? null}
-          />
+          {/* 2 — Reseña (el foco tras finalizar) */}
+          {!myReview ? (
+            <ReviewForm orderId={order.id} />
+          ) : (
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h2 className="mb-1 font-semibold">Tu reseña</h2>
+              <span className="inline-flex" aria-label={`${myReview.rating} de 5`}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star key={n} className={n <= myReview!.rating ? 'h-4 w-4 fill-brand-orange text-brand-orange' : 'h-4 w-4 text-muted-foreground/40'} />
+                ))}
+              </span>
+              {myReview.comment && <p className="mt-2 text-sm text-muted-foreground">{myReview.comment}</p>}
+            </div>
+          )}
+
+          {/* 3 — Comprobantes y reintegro del seguro, plegados */}
+          <FocusDetails summary="Comprobantes y reintegro del seguro">
+            <InvoiceButtons
+              orderId={order.id}
+              providerPhone={provider?.contact_phone ?? null}
+              providerName={provider?.legal_name ?? null}
+              amountUpfront={order.amount_upfront}
+              amountService={pricing?.saldo_estimado_gruero ?? null}
+            />
+            <InsuranceGuide
+              orderId={order.id}
+              originAddress={order.origin_address}
+              destAddress={order.dest_address}
+              completedAt={order.completed_at}
+              vehicle={vehicleLabel}
+              providerName={provider?.legal_name ?? null}
+              amountUpfront={order.amount_upfront}
+              amountService={pricing?.saldo_estimado_gruero ?? null}
+            />
+          </FocusDetails>
         </>
-      )}
-
-      {state === 'completed' && !myReview && <ReviewForm orderId={order.id} />}
-
-      {/* La reseña que ya dejó el cliente: queda visible como registro. */}
-      {state === 'completed' && myReview && (
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="mb-1 font-semibold">Tu reseña</h2>
-          <span className="inline-flex" aria-label={`${myReview.rating} de 5`}>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Star key={n} className={n <= myReview!.rating ? 'h-4 w-4 fill-brand-orange text-brand-orange' : 'h-4 w-4 text-muted-foreground/40'} />
-            ))}
-          </span>
-          {myReview.comment && <p className="mt-2 text-sm text-muted-foreground">{myReview.comment}</p>}
-        </div>
       )}
 
       {/* Todo lo secundario, plegado: no distrae del paso actual, pero está a un toque. */}
