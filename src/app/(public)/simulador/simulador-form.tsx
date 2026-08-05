@@ -5,19 +5,19 @@ import Link from 'next/link';
 import { Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
-import { quote, DEFAULT_PRICING } from '@/features/pricing/pricing';
+import { quote, DEFAULT_PRICING, type PricingSettings } from '@/features/pricing/pricing';
 
 /**
  * Simulador público de costo (B2C), simplificado: una sola perilla de distancia
  * aproximada a recorrer con el vehículo acarreado. Sin direcciones ni dollys, para
  * que dar una idea de precio sea instantáneo.
  */
-export function SimuladorForm() {
+export function SimuladorForm({ pricing = DEFAULT_PRICING }: { pricing?: PricingSettings }) {
   const [km, setKm] = useState(30);
 
   const breakdown = useMemo(
-    () => quote({ distanceMeters: km * 1000, dollys: 0 }, DEFAULT_PRICING),
-    [km],
+    () => quote({ distanceMeters: km * 1000, dollys: 0 }, pricing),
+    [km, pricing],
   );
 
   return (

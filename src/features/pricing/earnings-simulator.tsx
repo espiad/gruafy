@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { TrendingUp, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { quote, DEFAULT_PRICING } from '@/features/pricing/pricing';
+import { quote, DEFAULT_PRICING, type PricingSettings } from '@/features/pricing/pricing';
 import { formatARS } from '@/lib/format';
 
 /**
@@ -14,19 +14,19 @@ import { formatARS } from '@/lib/format';
  */
 const WORK_DAYS = 26;
 
-export function EarningsSimulator() {
+export function EarningsSimulator({ pricing = DEFAULT_PRICING }: { pricing?: PricingSettings }) {
   const [km, setKm] = useState(12);
   const [occasionalDollys, setOccasionalDollys] = useState(false);
   const [perDay, setPerDay] = useState(3);
 
   // Viaje típico (sin dolly) y viaje con 1 dolly, para promediar la proyección.
   const perTrip = useMemo(
-    () => quote({ distanceMeters: km * 1000, dollys: 0 }, DEFAULT_PRICING).saldo_estimado_gruero,
-    [km],
+    () => quote({ distanceMeters: km * 1000, dollys: 0 }, pricing).saldo_estimado_gruero,
+    [km, pricing],
   );
   const perTripDolly = useMemo(
-    () => quote({ distanceMeters: km * 1000, dollys: 1 }, DEFAULT_PRICING).saldo_estimado_gruero,
-    [km],
+    () => quote({ distanceMeters: km * 1000, dollys: 1 }, pricing).saldo_estimado_gruero,
+    [km, pricing],
   );
   // Con dollys ocasionales, 1 de cada 3 viajes suma un dolly.
   const avgTrip = occasionalDollys ? (perTrip * 2 + perTripDolly) / 3 : perTrip;

@@ -32,6 +32,18 @@ export async function recordDocument(input: z.infer<typeof recordSchema>) {
   }
 
   const supabase = await createClient();
+  // Autorización explícita (además de RLS): solo un miembro de ESE proveedor puede
+  // registrar documentos suyos.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, error: 'No autenticado' };
+  const [{ data: owned }, { data: isMember }] = await Promise.all([
+    supabase.from('provider_accounts').select('id').eq('id', d.providerId).eq('owner_id', user.id).maybeSingle(),
+    supabase.from('provider_members').select('id').eq('provider_id', d.providerId).eq('user_id', user.id).maybeSingle(),
+  ]);
+  if (!owned && !isMember) return { ok: false as const, error: 'No autorizado' };
+
   let memberId = d.memberId ?? null;
   // Si el documento es de un conductor, verificamos que el miembro sea de este
   // proveedor (evita colgar un documento de otra cuenta).
@@ -73,12 +85,22 @@ export async function recordDocument(input: z.infer<typeof recordSchema>) {
 
 export async function deleteDocument(docId: string) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, error: 'No autenticado' };
   const { data: doc } = await supabase
     .from('provider_documents')
-    .select('id, storage_path')
+    .select('id, storage_path, provider_id')
     .eq('id', docId)
     .single();
   if (doc) {
+    // Solo un miembro del proveedor dueño del documento puede borrarlo.
+    const [{ data: owned }, { data: isMember }] = await Promise.all([
+      supabase.from('provider_accounts').select('id').eq('id', doc.provider_id).eq('owner_id', user.id).maybeSingle(),
+      supabase.from('provider_members').select('id').eq('provider_id', doc.provider_id).eq('user_id', user.id).maybeSingle(),
+    ]);
+    if (!owned && !isMember) return { ok: false as const, error: 'No autorizado' };
     await supabase.storage.from('documents').remove([doc.storage_path]);
     await supabase.from('provider_documents').delete().eq('id', docId);
   }

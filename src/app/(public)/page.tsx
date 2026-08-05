@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { HeroVisual } from '@/components/brand/hero-visual';
 import { TrustBand, ProductPeek, Testimonials, TeamSection } from '@/components/landing/landing-sections';
 import { SimuladorForm } from '@/app/(public)/simulador/simulador-form';
+import { getPublicPlatformSettings, toPricingSettings } from '@/features/pricing/settings';
 
 const STEPS = [
   { icon: MapPin, title: 'Pedí', text: 'Marcá dónde estás y a dónde vas. Ves el precio antes de aceptar.' },
@@ -38,7 +39,8 @@ const FAQ = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const settings = await getPublicPlatformSettings();
   return (
     <>
       {/* HERO — naranja pleno para máxima legibilidad */}
@@ -133,7 +135,7 @@ export default function LandingPage() {
           <h2 className="text-3xl font-semibold md:text-4xl">¿Cuánto te sale un acarreo?</h2>
         </div>
         <div className="mt-10">
-          <SimuladorForm />
+          <SimuladorForm pricing={toPricingSettings(settings)} />
         </div>
       </section>
 

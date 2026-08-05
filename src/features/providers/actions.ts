@@ -273,10 +273,16 @@ export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Resu
   // La orden tiene que ser de este proveedor.
   const { data: order } = await supabase
     .from('service_orders')
-    .select('id, provider_id')
+    .select('id, provider_id, state')
     .eq('id', parsed.data.orderId)
     .single();
   if (!order || order.provider_id !== provider.id) return { ok: false, error: 'Este servicio no es tuyo' };
+  // Los adicionales solo se cargan MIENTRAS el servicio está en curso: después de
+  // cerrarlo (o si se canceló) no se puede inflar el total a cobrar.
+  const EDITABLE: OrderState[] = ['paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending'];
+  if (!EDITABLE.includes(order.state as OrderState)) {
+    return { ok: false, error: 'El servicio ya está cerrado: no se pueden agregar adicionales.' };
+  }
 
   const { getPlatformSettings } = await import('@/features/pricing/settings');
   const settings = await getPlatformSettings();

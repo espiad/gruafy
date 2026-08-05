@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { GruafyMark } from '@/components/brand/logo';
 import { createClient } from '@/lib/supabase/server';
 import { EarningsSimulator } from '@/features/pricing/earnings-simulator';
+import { getPublicPlatformSettings, toPricingSettings } from '@/features/pricing/settings';
 import { ProductPeek, Testimonials, ProviderSocialProof } from '@/components/landing/landing-sections';
 
 const FAQ_PROVEEDORES = [
@@ -46,6 +47,7 @@ const STEPS = [
 
 export default async function ProveedoresLanding() {
   // Prueba social real: grúas aprobadas (sin exponer datos personales).
+  const settings = await getPublicPlatformSettings();
   const supabase = await createClient();
   const { data: approved, count } = await supabase
     .from('provider_accounts')
@@ -115,7 +117,7 @@ export default async function ProveedoresLanding() {
           </p>
         </div>
         <div className="mt-10">
-          <EarningsSimulator />
+          <EarningsSimulator pricing={toPricingSettings(settings)} />
         </div>
       </section>
 

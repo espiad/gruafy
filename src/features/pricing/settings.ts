@@ -70,6 +70,27 @@ export async function getPlatformSettings(): Promise<PlatformValues> {
   return DEFAULT_PLATFORM;
 }
 
+/**
+ * Igual que `getPlatformSettings`, pero para páginas PÚBLICAS (visitante sin
+ * sesión). La RLS de `platform_settings` solo permite leer a usuarios autenticados,
+ * así que acá usamos service role: se exponen únicamente los valores de precio, que
+ * de todos modos se le muestran al público en el simulador.
+ */
+export async function getPublicPlatformSettings(): Promise<PlatformValues> {
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const { data } = await createAdminClient()
+      .from('platform_settings')
+      .select('values')
+      .eq('id', 1)
+      .single();
+    if (data?.values) return { ...DEFAULT_PLATFORM, ...(data.values as Partial<PlatformValues>) };
+  } catch {
+    /* sin service role: usamos defaults */
+  }
+  return DEFAULT_PLATFORM;
+}
+
 /** Extrae solo los campos de precio para el motor de `quote`. */
 export function toPricingSettings(v: PlatformValues): PricingSettings {
   return {

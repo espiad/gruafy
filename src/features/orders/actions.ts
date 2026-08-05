@@ -31,6 +31,22 @@ export async function createOrder(input: CreateOrderInput): Promise<ActionResult
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'No autenticado' };
 
+  // Un cliente no puede tener dos auxilios en curso a la vez (evita duplicar el
+  // pedido por doble toque / dos pestañas, y con eso doble grúa y doble cobro).
+  const ACTIVE_STATES: import('@/types/database').OrderStateDb[] = [
+    'searching_provider', 'provider_reserved', 'awaiting_payment', 'payment_pending',
+    'paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending',
+  ];
+  const { data: enCurso } = await supabase
+    .from('service_orders')
+    .select('id')
+    .eq('client_id', user.id)
+    .in('state', ACTIVE_STATES)
+    .limit(1);
+  if (enCurso && enCurso.length > 0) {
+    return { ok: false, error: 'Ya tenés un auxilio en curso. Abrilo desde Inicio o cancelalo antes de pedir otro.', orderId: enCurso[0]!.id };
+  }
+
   const settings = await getPlatformSettings();
   const breakdown = quote(
     { distanceMeters: data.distance_meters, dollys: data.dollys },

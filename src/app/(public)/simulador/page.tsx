@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import { SimuladorForm } from './simulador-form';
+import { getPublicPlatformSettings, toPricingSettings } from '@/features/pricing/settings';
 
 export const metadata: Metadata = {
   title: 'Simulá tu costo',
   description: 'Calculá cuánto te sale un acarreo con grúa. Desglose claro de lo que pagás ahora y lo que pagás después.',
 };
 
-export default function SimuladorPage() {
+export default async function SimuladorPage() {
+  const settings = await getPublicPlatformSettings();
   return (
     <div className="container py-14">
       <div className="mx-auto mb-10 max-w-2xl text-center">
@@ -16,7 +18,7 @@ export default function SimuladorPage() {
           compromiso. Primero una grúa acepta; recién después pagás el anticipo por Mercado Pago.
         </p>
       </div>
-      <SimuladorForm />
+      <SimuladorForm pricing={toPricingSettings(settings)} />
     </div>
   );
 }

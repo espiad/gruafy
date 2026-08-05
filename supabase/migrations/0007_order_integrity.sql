@@ -28,6 +28,8 @@ insert into order_transitions (from_state, to_state) values
   ('awaiting_payment','payment_expired'),
   ('payment_pending','payment_expired'),
   ('payment_expired','searching_provider'),
+  -- El cliente rechaza a la grúa asignada y vuelve a buscar (rejectAndResearch).
+  ('awaiting_payment','searching_provider'),
   ('paid','provider_en_route'),
   ('provider_en_route','provider_arrived'),
   ('provider_arrived','vehicle_loaded'),
