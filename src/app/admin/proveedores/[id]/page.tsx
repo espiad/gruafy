@@ -43,7 +43,7 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
       </div>
 
       {/* Alerta de reputación: si acumula malas reseñas, el admin decide si suspende. */}
-      {provider.rating_count >= 3 && provider.rating_avg < 3.5 && provider.status === 'approved' && (
+      {provider.rating_count >= 1 && provider.rating_avg <= 2 && provider.status === 'approved' && (
         <div className="rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-4 text-sm">
           <p className="font-semibold text-destructive">Reputación baja</p>
           <p className="mt-1 text-muted-foreground">

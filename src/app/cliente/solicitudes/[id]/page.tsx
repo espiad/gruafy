@@ -227,7 +227,7 @@ export default async function SolicitudDetalle({
             )}
             {prepay.truckPatente && <span>· Patente {prepay.truckPatente}</span>}
           </div>
-          {prepay.rating_count >= 3 && prepay.rating_avg < 3.5 ? (
+          {prepay.rating_count >= 1 && prepay.rating_avg <= 2 ? (
             <div className="mt-3 rounded-md bg-warning/15 p-2.5">
               <p className="text-xs text-warning-foreground">
                 Esta grúa tiene una reputación baja ({prepay.rating_avg.toFixed(1)}★). Mirá sus reseñas,

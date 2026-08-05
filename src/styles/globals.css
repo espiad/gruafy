@@ -122,6 +122,11 @@
   }
 }
 
+/* Scroll suave para la navegación por anclas de la landing. */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Carrusel infinito (marquee) para los testimonios. Solo CSS, sin JS. */
 @keyframes marquee {
   from {

@@ -3,9 +3,9 @@ import { Logo } from '@/components/brand/logo';
 import { Button } from '@/components/ui/button';
 
 const NAV = [
-  { href: '/como-funciona', label: 'Cómo funciona' },
-  { href: '/simulador', label: 'Simulá tu costo' },
-  { href: '/ayuda', label: 'Ayuda' },
+  { href: '/#como-funciona', label: 'Cómo funciona' },
+  { href: '/#simulador', label: 'Simulá tu costo' },
+  { href: '/#ayuda', label: 'Ayuda' },
   { href: '/proveedores', label: 'Sumá tu grúa' },
 ];
 

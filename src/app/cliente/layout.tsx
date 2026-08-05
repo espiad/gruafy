@@ -1,5 +1,6 @@
 import { AppShell } from '@/components/app/app-shell';
 import { getProfile } from '@/lib/auth/session';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import type { NavItem } from '@/components/app/nav-links';
 import { ActiveServiceBar } from '@/features/orders/active-service-bar';
@@ -18,6 +19,14 @@ export default async function ClienteLayout({ children }: { children: React.Reac
   // Los proveedores y admins tienen su propia área.
   if (profile.role === 'admin') redirect('/admin');
   if (profile.role === 'provider_owner' || profile.role === 'provider_driver') redirect('/proveedor');
+
+  // Gate de perfil: si faltan datos básicos o el DNI (típico al entrar con Google),
+  // lo mandamos a completarlo antes de operar.
+  const supabase = await createClient();
+  const { data: cp } = await supabase.from('client_profiles').select('dni').eq('id', profile.id).maybeSingle();
+  if (!profile.first_name || !profile.last_name || !profile.phone || !cp?.dni) {
+    redirect('/completar-perfil?next=/cliente');
+  }
 
   const name = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null;
   return (

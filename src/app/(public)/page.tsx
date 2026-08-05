@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { MapPin, Radar, CheckCircle2, ShieldCheck, Eye, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeroVisual } from '@/components/brand/hero-visual';
-import { TrustBand, ProductPeek, Testimonials } from '@/components/landing/landing-sections';
+import { TrustBand, ProductPeek, Testimonials, TeamSection } from '@/components/landing/landing-sections';
+import { SimuladorForm } from '@/app/(public)/simulador/simulador-form';
 
 const STEPS = [
   { icon: MapPin, title: 'Pedí', text: 'Marcá dónde estás y a dónde vas. Ves el precio antes de aceptar.' },
@@ -60,7 +61,7 @@ export default function LandingPage() {
       <TrustBand />
 
       {/* PASOS */}
-      <section className="container py-20">
+      <section id="como-funciona" className="container scroll-mt-20 py-20">
         <h2 className="text-center text-3xl font-semibold">Tu auxilio en tres pasos</h2>
         <p className="mx-auto mt-2 max-w-xl text-center text-muted-foreground">
           Pensado para el momento de estrés: encontramos tu grúa en minutos.
@@ -110,24 +111,24 @@ export default function LandingPage() {
         ]}
       />
 
-      {/* CTA SIMULADOR */}
-      <section className="container py-20">
-        <div className="relative overflow-hidden rounded-3xl bg-brand-ink px-8 py-14 text-center text-brand-cream md:px-16">
-          <div className="brand-bars pointer-events-none absolute inset-x-0 bottom-0 h-16 opacity-20" aria-hidden />
-          <h2 className="mx-auto max-w-2xl text-3xl font-semibold md:text-4xl">
-            ¿Cuánto te sale un acarreo?
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-brand-cream/75">
-            Averigualo en 30 segundos y sin registrarte.
+      {/* EQUIPO */}
+      <TeamSection />
+
+      {/* SIMULADOR (embebido en la landing) */}
+      <section id="simulador" className="container scroll-mt-20 py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-semibold md:text-4xl">¿Cuánto te sale un acarreo?</h2>
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+            Movés la distancia y ves el desglose al instante. Sin registrarte.
           </p>
-          <Button asChild size="lg" className="mt-8">
-            <Link href="/simulador">Simular costo ahora <ArrowRight /></Link>
-          </Button>
+        </div>
+        <div className="mt-10">
+          <SimuladorForm />
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="container pb-24">
+      {/* FAQ / AYUDA */}
+      <section id="ayuda" className="container scroll-mt-20 pb-24">
         <h2 className="text-center text-3xl font-semibold">Preguntas frecuentes</h2>
         <div className="mx-auto mt-10 max-w-3xl divide-y divide-border rounded-2xl border border-border bg-card">
           {FAQ.map((f) => (
