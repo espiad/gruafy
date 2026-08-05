@@ -10,6 +10,7 @@ import { ProviderReviews } from '@/features/reviews/provider-reviews';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { AdminPasswordReset } from '@/features/admin/admin-password-reset';
 import { AdminProviderEditor } from '@/features/admin/admin-provider-editor';
+import { AdminMemberEditor, AdminTruckEditor } from '@/features/admin/admin-member-truck-editors';
 
 export default async function AdminProveedorDetalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -109,9 +110,7 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><Truck className="h-4 w-4" /> Grúas</h2>
         <ul className="space-y-2">
           {(trucks ?? []).map((t) => (
-            <li key={t.id} className="rounded-lg border border-border p-3 text-sm">
-              <strong>{t.patente}</strong> · {[t.brand, t.model, t.year].filter(Boolean).join(' ')} {t.capacity && `· ${t.capacity}`}
-            </li>
+            <AdminTruckEditor key={t.id} truck={t} />
           ))}
           {(!trucks || trucks.length === 0) && <li className="text-sm text-muted-foreground">Sin grúas cargadas.</li>}
         </ul>
@@ -121,10 +120,7 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><Users className="h-4 w-4" /> Conductores</h2>
         <ul className="space-y-2">
           {(members ?? []).map((m) => (
-            <li key={m.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm">
-              <span>{m.full_name} {m.dni && `· DNI ${m.dni}`}</span>
-              <span className="text-xs text-muted-foreground">{m.role === 'owner' ? 'Conductor dueño' : 'Conductor'}</span>
-            </li>
+            <AdminMemberEditor key={m.id} member={m} />
           ))}
           {(!members || members.length === 0) && <li className="text-sm text-muted-foreground">Sin conductores.</li>}
         </ul>

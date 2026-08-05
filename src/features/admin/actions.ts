@@ -249,6 +249,66 @@ export async function adminSetUserEmail(userId: string, email: string): Promise<
   return { ok: true };
 }
 
+const adminMemberSchema = z.object({
+  memberId: z.string().uuid(),
+  full_name: z.string().min(2, 'Ingresá el nombre'),
+  dni: z.string().optional(),
+  phone: z.string().min(6, 'El teléfono es obligatorio'),
+});
+
+/** El admin corrige los datos de un conductor. */
+export async function adminUpdateMember(input: z.infer<typeof adminMemberSchema>): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = adminMemberSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const { data: updated, error } = await admin
+    .from('provider_members')
+    .update({ full_name: parsed.data.full_name, dni: parsed.data.dni || null, phone: parsed.data.phone })
+    .eq('id', parsed.data.memberId)
+    .select('provider_id')
+    .maybeSingle();
+  if (error || !updated) return { ok: false, error: 'No pudimos guardar el conductor' };
+  await audit('admin_update_member', 'provider_members', parsed.data.memberId, null, parsed.data);
+  revalidatePath(`/admin/proveedores/${updated.provider_id}`);
+  return { ok: true };
+}
+
+const adminTruckSchema = z.object({
+  truckId: z.string().uuid(),
+  patente: z.string().min(3, 'Patente inválida'),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  year: z.coerce.number().int().optional().catch(undefined),
+  capacity: z.string().optional(),
+});
+
+/** El admin corrige los datos de una grúa. */
+export async function adminUpdateTruck(input: z.infer<typeof adminTruckSchema>): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = adminTruckSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const { data: updated, error } = await admin
+    .from('tow_trucks')
+    .update({
+      patente: parsed.data.patente.toUpperCase().replace(/\s/g, ''),
+      brand: parsed.data.brand || null,
+      model: parsed.data.model || null,
+      year: parsed.data.year ?? null,
+      capacity: parsed.data.capacity || null,
+    })
+    .eq('id', parsed.data.truckId)
+    .select('provider_id')
+    .maybeSingle();
+  if (error || !updated) return { ok: false, error: 'No pudimos guardar la grúa' };
+  await audit('admin_update_truck', 'tow_trucks', parsed.data.truckId, null, parsed.data);
+  revalidatePath(`/admin/proveedores/${updated.provider_id}`);
+  return { ok: true };
+}
+
 /** El admin cambia la contraseña de un usuario (soporte). Usa la Admin Auth API. */
 export async function adminSetPassword(input: z.infer<typeof setPasswordSchema>): Promise<Result> {
   if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
