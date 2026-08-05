@@ -30,6 +30,19 @@ export async function setAvailability(available: boolean, lat?: number, lng?: nu
   if (available && provider.status !== 'approved') {
     return { ok: false, error: 'Tu cuenta todavía no está aprobada' };
   }
+  // Vencimiento de documentación: si el admin puso una fecha y ya pasó, no se puede
+  // operar hasta renovar (renovación de documentación pendiente).
+  if (available) {
+    const { data: venc } = await supabase
+      .from('provider_documents')
+      .select('expires_at')
+      .eq('provider_id', provider.id)
+      .eq('doc_type', 'vencimiento_docs')
+      .maybeSingle();
+    if (venc?.expires_at && new Date(venc.expires_at) < new Date()) {
+      return { ok: false, error: 'Tu documentación venció. Renovala y escribinos a soporte para reactivarte.' };
+    }
+  }
   // No se puede estar disponible sin al menos un conductor COMPLETO (nombre, DNI,
   // teléfono, licencia y foto). Sin eso, nadie puede tomar un auxilio.
   if (available) {

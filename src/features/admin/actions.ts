@@ -81,6 +81,8 @@ const decisionSchema = z.object({
   providerId: z.string().uuid(),
   decision: z.enum(['approved', 'rejected', 'suspended', 'under_review']),
   reason: z.string().max(300).optional(),
+  /** Al aprobar: fecha de vencimiento de la documentación (opcional). */
+  expireAt: z.string().optional(),
 });
 
 /** Aprueba, rechaza, suspende o pasa a revisión una cuenta de proveedor. */
@@ -103,6 +105,29 @@ export async function decideProvider(input: z.infer<typeof decisionSchema>): Pro
   if (parsed.data.decision !== 'approved') patch.is_available = false;
 
   await supabase.from('provider_accounts').update(patch).eq('id', parsed.data.providerId);
+
+  if (parsed.data.decision === 'approved') {
+    // Al aprobar el proveedor, se aprueban TODOS sus documentos pendientes.
+    await supabase
+      .from('provider_documents')
+      .update({ review_status: 'approved' })
+      .eq('provider_id', parsed.data.providerId)
+      .eq('review_status', 'pending');
+    // Fecha de vencimiento de documentación (opcional): la guardamos como un
+    // "documento" especial con expires_at. Al vencer, se bloquea la operación.
+    await supabase.from('provider_documents').delete().eq('provider_id', parsed.data.providerId).eq('doc_type', 'vencimiento_docs');
+    if (parsed.data.expireAt) {
+      await supabase.from('provider_documents').insert({
+        provider_id: parsed.data.providerId,
+        owner_kind: 'provider',
+        doc_type: 'vencimiento_docs',
+        storage_path: '(control de vencimiento)',
+        expires_at: parsed.data.expireAt,
+        review_status: 'approved',
+      });
+    }
+  }
+
   await audit('decide_provider', 'provider_accounts', parsed.data.providerId, { status: provider.status }, { status: parsed.data.decision });
   revalidatePath('/admin/proveedores');
   revalidatePath(`/admin/proveedores/${parsed.data.providerId}`);
@@ -182,6 +207,47 @@ const setPasswordSchema = z.object({
   userId: z.string().uuid(),
   password: z.string().min(8, 'Mínimo 8 caracteres'),
 });
+
+const adminCompanySchema = z.object({
+  providerId: z.string().uuid(),
+  legal_name: z.string().min(2),
+  cuit: z.string().min(6),
+  contact_email: z.string().email().optional().or(z.literal('')),
+  contact_phone: z.string().min(6),
+});
+
+/** El admin corrige los datos de la empresa (razón social, CUIT, contacto). */
+export async function adminUpdateProvider(input: z.infer<typeof adminCompanySchema>): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = adminCompanySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('provider_accounts')
+    .update({
+      legal_name: parsed.data.legal_name,
+      cuit: parsed.data.cuit.replace(/\D/g, ''),
+      contact_email: parsed.data.contact_email || null,
+      contact_phone: parsed.data.contact_phone,
+    })
+    .eq('id', parsed.data.providerId);
+  if (error) return { ok: false, error: 'No pudimos guardar los cambios' };
+  await audit('admin_update_provider', 'provider_accounts', parsed.data.providerId, null, parsed.data);
+  revalidatePath(`/admin/proveedores/${parsed.data.providerId}`);
+  return { ok: true };
+}
+
+/** El admin corrige el email de login de un usuario (lo pusieron mal, etc.). */
+export async function adminSetUserEmail(userId: string, email: string): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  if (!/.+@.+\..+/.test(email)) return { ok: false, error: 'Email inválido' };
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(userId, { email, email_confirm: true });
+  if (error) return { ok: false, error: 'No pudimos cambiar el email (¿ya está en uso?)' };
+  await audit('admin_set_email', 'auth.users', userId, null, { email });
+  return { ok: true };
+}
 
 /** El admin cambia la contraseña de un usuario (soporte). Usa la Admin Auth API. */
 export async function adminSetPassword(input: z.infer<typeof setPasswordSchema>): Promise<Result> {

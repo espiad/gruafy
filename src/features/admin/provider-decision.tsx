@@ -22,6 +22,7 @@ export function ProviderDecision({ providerId, status }: { providerId: string; s
   const [loading, setLoading] = useState<null | 'approved' | 'rejected' | 'suspended'>(null);
   const [mode, setMode] = useState<'idle' | 'rejecting' | 'suspending'>('idle');
   const [reason, setReason] = useState('');
+  const [expireAt, setExpireAt] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
 
@@ -33,7 +34,12 @@ export function ProviderDecision({ providerId, status }: { providerId: string; s
       return;
     }
     setLoading(decision);
-    const res = await decideProvider({ providerId, decision, reason: reason || undefined });
+    const res = await decideProvider({
+      providerId,
+      decision,
+      reason: reason || undefined,
+      expireAt: decision === 'approved' && expireAt ? expireAt : undefined,
+    });
     setLoading(null);
     if (!res.ok) {
       setError(res.error ?? 'No pudimos aplicar la decisión.');
@@ -72,7 +78,20 @@ export function ProviderDecision({ providerId, status }: { providerId: string; s
           </div>
         </div>
       ) : (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 space-y-2">
+        {current !== 'approved' && (
+          <label className="block text-xs text-muted-foreground">
+            Vencimiento de documentación (opcional) — al llegar esa fecha, se bloquea la operación por
+            renovación pendiente.
+            <input
+              type="date"
+              value={expireAt}
+              onChange={(e) => setExpireAt(e.target.value)}
+              className="focus-ring mt-1 block h-9 rounded-md border border-input bg-background px-2 text-sm"
+            />
+          </label>
+        )}
+        <div className="flex flex-wrap gap-2">
           {/* Aprobar/Reactivar: disponible en pendiente, rechazado o suspendido. */}
           {current !== 'approved' && (
             <Button size="sm" onClick={() => decide('approved')} disabled={loading !== null}>
@@ -92,6 +111,7 @@ export function ProviderDecision({ providerId, status }: { providerId: string; s
               <Ban className="h-4 w-4" /> Suspender
             </Button>
           )}
+        </div>
         </div>
       )}
       {okMsg && <p className="mt-2 text-sm text-success">{okMsg}</p>}

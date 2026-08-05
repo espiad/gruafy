@@ -9,6 +9,7 @@ import { ProviderDecision } from '@/features/admin/provider-decision';
 import { ProviderReviews } from '@/features/reviews/provider-reviews';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { AdminPasswordReset } from '@/features/admin/admin-password-reset';
+import { AdminProviderEditor } from '@/features/admin/admin-provider-editor';
 
 export default async function AdminProveedorDetalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,6 +22,18 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
     supabase.from('provider_members').select('*').eq('provider_id', id),
     supabase.from('provider_documents').select('*').eq('provider_id', id).order('created_at', { ascending: true }),
   ]);
+
+  // Email de login del dueño (para que el admin lo pueda corregir).
+  let loginEmail: string | null = null;
+  if (provider.owner_id) {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const { data: u } = await createAdminClient().auth.admin.getUserById(provider.owner_id);
+      loginEmail = u.user?.email ?? null;
+    } catch {
+      loginEmail = null;
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -54,6 +67,18 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
       )}
 
       <ProviderDecision providerId={provider.id} status={provider.status} />
+
+      <AdminProviderEditor
+        company={{
+          providerId: provider.id,
+          legal_name: provider.legal_name,
+          cuit: provider.cuit,
+          contact_email: provider.contact_email,
+          contact_phone: provider.contact_phone,
+        }}
+        userId={provider.owner_id}
+        loginEmail={loginEmail}
+      />
 
       <div className="rounded-2xl border border-border bg-card p-5">
         <h2 className="mb-2 text-sm font-semibold">Soporte de cuenta</h2>
