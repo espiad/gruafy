@@ -76,12 +76,22 @@ export function productionReadiness(): string[] {
   if (!get('MERCADOPAGO_WEBHOOK_SECRET')) problems.push('Falta MERCADOPAGO_WEBHOOK_SECRET.');
   if (!publicEnv.appUrl.startsWith('https://'))
     problems.push('NEXT_PUBLIC_APP_URL debe ser HTTPS en producción.');
-  if (!get('NEXT_PUBLIC_LEGAL_NAME'))
-    problems.push('Falta la razón social real (NEXT_PUBLIC_LEGAL_NAME).');
-  if (!get('NEXT_PUBLIC_LEGAL_CUIT')) problems.push('Falta el CUIT real (NEXT_PUBLIC_LEGAL_CUIT).');
   if (!get('ADMIN_EMAIL')) problems.push('Falta ADMIN_EMAIL.');
   if (!publicEnv.geoapifyKey) problems.push('Falta NEXT_PUBLIC_GEOAPIFY_API_KEY.');
   return problems;
+}
+
+/**
+ * Advertencias de producción (no bloquean el arranque, pero conviene resolver):
+ * los datos fiscales/legales. Sin CUIT/razón social se puede operar el anticipo,
+ * pero la facturación real los necesita. Se muestran vacíos, nunca inventados.
+ */
+export function productionWarnings(): string[] {
+  if (paymentsMode() !== 'production') return [];
+  const warnings: string[] = [];
+  if (!get('NEXT_PUBLIC_LEGAL_NAME')) warnings.push('Sin razón social real (NEXT_PUBLIC_LEGAL_NAME).');
+  if (!get('NEXT_PUBLIC_LEGAL_CUIT')) warnings.push('Sin CUIT real (NEXT_PUBLIC_LEGAL_CUIT).');
+  return warnings;
 }
 
 /** Configuración de servidor (nunca importar desde componentes cliente). */
