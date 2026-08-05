@@ -12,7 +12,7 @@ import { quote, type PricingSettings } from '@/features/pricing/pricing';
 import { hasGeoapify, type GeoPoint } from '@/lib/geoapify';
 import { normalizePatente, isValidPatente } from '@/lib/validation/argentina';
 import { brandsFor, type VehicleType } from '@/features/orders/vehicle-data';
-import { createOrder, uploadSituationPhoto } from '@/features/orders/actions';
+import { createOrder, uploadSituationPhoto, startSearch } from '@/features/orders/actions';
 
 interface VehicleLite {
   id: string;
@@ -164,17 +164,19 @@ export function SolicitarWizard({
         conditions: { public_road: true, vehicle_type: vType, wheels_unsure: wheelState === 'unsure' },
         accepted_terms: true,
       });
-      if (!res.ok) return setError(res.error ?? 'No pudimos crear la solicitud');
-      // Sube la foto de la situación (best-effort; no bloquea el pedido si falla).
-      if (photo && res.orderId) {
+      if (!res.ok || !res.orderId) return setError(res.error ?? 'No pudimos crear la solicitud');
+      // Subimos la foto ANTES de difundir el pedido, para que los grueros ya la vean.
+      if (photo) {
         try {
           const fd = new FormData();
           fd.append('photo', photo, 'situacion.jpg');
           await uploadSituationPhoto(res.orderId, fd);
         } catch {
-          /* la orden ya se creó; la foto es complementaria */
+          /* la foto es complementaria; seguimos igual */
         }
       }
+      // Recién ahora difundimos el pedido a los grueros.
+      await startSearch(res.orderId);
       router.push(`/cliente/solicitudes/${res.orderId}`);
     });
   }

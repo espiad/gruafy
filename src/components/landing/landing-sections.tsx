@@ -39,28 +39,37 @@ export interface Testimonial {
   rating?: number;
 }
 
-/** Testimonios. Contenido de EJEMPLO para reemplazar por reseñas reales. */
-export function Testimonials({ title, items }: { title: string; items: Testimonial[] }) {
+function TestimonialCard({ t }: { t: Testimonial }) {
   return (
-    <section className="container py-20">
-      <h2 className="text-center text-3xl font-semibold">{title}</h2>
-      <div className="mt-10 grid gap-6 md:grid-cols-3">
-        {items.map((t) => (
-          <figure key={t.name} className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <Quote className="h-6 w-6 text-brand-orange/60" aria-hidden />
-            <blockquote className="mt-3 flex-1 text-sm leading-relaxed">“{t.quote}”</blockquote>
-            <div className="mt-4 flex items-center gap-1" aria-label={`${t.rating ?? 5} de 5`}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Star key={n} className={n <= (t.rating ?? 5) ? 'h-3.5 w-3.5 fill-brand-orange text-brand-orange' : 'h-3.5 w-3.5 text-muted-foreground/30'} />
-              ))}
-            </div>
-            <figcaption className="mt-2 text-sm font-medium">
-              {t.name} <span className="font-normal text-muted-foreground">· {t.meta}</span>
-            </figcaption>
-          </figure>
+    <figure className="flex w-[300px] shrink-0 flex-col rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <Quote className="h-6 w-6 text-brand-orange/60" aria-hidden />
+      <blockquote className="mt-3 flex-1 text-sm leading-relaxed">“{t.quote}”</blockquote>
+      <div className="mt-4 flex items-center gap-1" aria-label={`${t.rating ?? 5} de 5`}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Star key={n} className={n <= (t.rating ?? 5) ? 'h-3.5 w-3.5 fill-brand-orange text-brand-orange' : 'h-3.5 w-3.5 text-muted-foreground/30'} />
         ))}
       </div>
-      <p className="mt-6 text-center text-xs text-muted-foreground">Testimonios ilustrativos de la experiencia gruafy.</p>
+      <figcaption className="mt-2 text-sm font-medium">
+        {t.name} <span className="font-normal text-muted-foreground">· {t.meta}</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+/** Testimonios en carrusel infinito (marquee CSS, se pausa al pasar el mouse). */
+export function Testimonials({ title, items }: { title: string; items: Testimonial[] }) {
+  // Duplicamos la lista para que el loop sea continuo (se traslada -50%).
+  const loop = [...items, ...items];
+  return (
+    <section className="py-20">
+      <h2 className="text-center text-3xl font-semibold">{title}</h2>
+      <div className="marquee-mask relative mt-10 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
+        <div className="animate-marquee flex w-max gap-6">
+          {loop.map((t, i) => (
+            <TestimonialCard key={`${t.name}-${i}`} t={t} />
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

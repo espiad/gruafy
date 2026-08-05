@@ -102,17 +102,37 @@ export async function createOrder(input: CreateOrderInput): Promise<ActionResult
     event: 'Búsqueda de grúa iniciada',
   });
 
-  // Despacho de ofertas a proveedores cercanos (usa service role, salta RLS de forma controlada).
-  try {
-    const { dispatchOrder } = await import('@/features/dispatch/service');
-    await dispatchOrder(order.id);
-  } catch {
-    // Si el despacho falla (p. ej. sin service role en dev), la orden queda en
-    // búsqueda y el admin puede asignar manualmente. No rompemos el flujo del cliente.
-  }
-
+  // NO despachamos acá: primero el cliente sube la foto de la situación y recién
+  // después llamamos a `startSearch`, así los grueros ya ven la foto en la oferta.
   revalidatePath('/cliente');
   return { ok: true, orderId: order.id };
+}
+
+/**
+ * Dispara el despacho de ofertas a los grueros. Se llama DESPUÉS de subir la foto
+ * de la situación para que la oferta ya la incluya. Verifica propiedad y estado.
+ */
+export async function startSearch(orderId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const { data: order } = await supabase
+    .from('service_orders')
+    .select('id, client_id, state')
+    .eq('id', orderId)
+    .single();
+  if (!order || order.client_id !== user.id) return { ok: false, error: 'Orden no encontrada' };
+  if (order.state !== 'searching_provider') return { ok: true, orderId }; // ya despachada o avanzó
+
+  try {
+    const { dispatchOrder } = await import('@/features/dispatch/service');
+    await dispatchOrder(orderId);
+  } catch {
+    // Si el despacho falla, la orden queda en búsqueda y el admin puede asignar.
+  }
+  return { ok: true, orderId };
 }
 
 /** Cancela una orden del cliente (solo en estados cancelables). */

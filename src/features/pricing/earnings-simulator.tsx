@@ -16,14 +16,21 @@ const WORK_DAYS = 26;
 
 export function EarningsSimulator() {
   const [km, setKm] = useState(12);
-  const [dollys, setDollys] = useState(0);
+  const [occasionalDollys, setOccasionalDollys] = useState(false);
   const [perDay, setPerDay] = useState(3);
 
+  // Viaje típico (sin dolly) y viaje con 1 dolly, para promediar la proyección.
   const perTrip = useMemo(
-    () => quote({ distanceMeters: km * 1000, dollys }, DEFAULT_PRICING).saldo_estimado_gruero,
-    [km, dollys],
+    () => quote({ distanceMeters: km * 1000, dollys: 0 }, DEFAULT_PRICING).saldo_estimado_gruero,
+    [km],
   );
-  const perMonth = perTrip * perDay * WORK_DAYS;
+  const perTripDolly = useMemo(
+    () => quote({ distanceMeters: km * 1000, dollys: 1 }, DEFAULT_PRICING).saldo_estimado_gruero,
+    [km],
+  );
+  // Con dollys ocasionales, 1 de cada 3 viajes suma un dolly.
+  const avgTrip = occasionalDollys ? (perTrip * 2 + perTripDolly) / 3 : perTrip;
+  const perMonth = avgTrip * perDay * WORK_DAYS;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
@@ -43,23 +50,20 @@ export function EarningsSimulator() {
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">Dollys</label>
-          <div className="flex gap-2">
-            {[0, 1, 2].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setDollys(n)}
-                className={`focus-ring h-11 flex-1 rounded-md border text-sm font-medium ${
-                  dollys === n ? 'border-brand-orange bg-brand-orange/15 text-brand-green' : 'border-input hover:bg-accent'
-                }`}
-              >
-                {n === 0 ? 'Ninguno' : `${n}`}
-              </button>
-            ))}
-          </div>
-        </div>
+        <label className="flex items-start gap-2 rounded-lg border border-input p-3 text-sm">
+          <input
+            type="checkbox"
+            checked={occasionalDollys}
+            onChange={(e) => setOccasionalDollys(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-brand-orange"
+          />
+          <span>
+            Incluir dollys ocasionales
+            <span className="block text-xs text-muted-foreground">
+              Suma un dolly en 1 de cada 3 viajes (ruedas trabadas). Sube un poco el promedio.
+            </span>
+          </span>
+        </label>
 
         <div>
           <label className="block text-sm font-medium">

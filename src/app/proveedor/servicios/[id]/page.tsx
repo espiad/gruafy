@@ -6,7 +6,7 @@ import { StatusBadge } from '@/components/orders/status-badge';
 import { ServiceActionsPanel } from '@/features/providers/service-actions-panel';
 import { ExtraForm } from '@/features/providers/extra-form';
 import { LocationSender } from '@/features/tracking/location-sender';
-import { OrderAutoRefresh } from '@/features/orders/order-live';
+import { OrderAutoRefresh, OrderRealtime } from '@/features/orders/order-live';
 import { StatusHero } from '@/features/orders/status-hero';
 import { FocusDetails } from '@/components/ui/focus-details';
 import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
@@ -64,7 +64,8 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      {!isTerminal(state) && <OrderAutoRefresh active intervalMs={4000} />}
+      {!isTerminal(state) && <OrderRealtime orderId={order.id} />}
+      {!isTerminal(state) && <OrderAutoRefresh active intervalMs={8000} />}
 
       <div className="flex items-center justify-between">
         <Link href="/proveedor" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">

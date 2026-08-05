@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { createClient } from '@/lib/supabase/client';
 import { cancelOrderByClient, resolveSearchTimeout } from './actions';
 
 /**
@@ -17,6 +18,31 @@ export function OrderAutoRefresh({ active, intervalMs = 4000 }: { active: boolea
     const id = setInterval(() => router.refresh(), intervalMs);
     return () => clearInterval(id);
   }, [active, intervalMs, router]);
+  return null;
+}
+
+/**
+ * Actualización en tiempo real de una orden: se suscribe a los cambios de la fila
+ * (Supabase Realtime) y refresca al instante, sin depender del polling. Requiere
+ * que `service_orders` esté en la publicación de realtime; si no lo está, no pasa
+ * nada (el OrderAutoRefresh sigue de respaldo). Silencioso.
+ */
+export function OrderRealtime({ orderId }: { orderId: string }) {
+  const router = useRouter();
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`order-rt-${orderId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'service_orders', filter: `id=eq.${orderId}` },
+        () => router.refresh(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [orderId, router]);
   return null;
 }
 

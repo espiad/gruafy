@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PlusCircle, ArrowRight, MapPin, Radar, CheckCircle2, HelpCircle } from 'lucide-react';
+import { PlusCircle, ArrowRight, MapPin, CheckCircle2, HelpCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/auth/session';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,6 @@ import { formatDateTime, formatARS } from '@/lib/format';
 import { isTerminal, type OrderState } from '@/features/orders/state-machine';
 import { HowTo } from '@/features/onboarding/how-to';
 import { AppNudges } from '@/features/pwa/app-nudges';
-
-const ONBOARDING = [
-  { icon: PlusCircle, title: 'Cargá tu vehículo', text: 'Auto o moto, marca y modelo. Te ayudamos con las opciones.' },
-  { icon: MapPin, title: 'Marcá dónde estás', text: 'Con un toque usás tu ubicación y elegís a dónde va.' },
-  { icon: Radar, title: 'Seguí la grúa en vivo', text: 'Una grúa acepta, pagás el anticipo y la ves venir en el mapa.' },
-];
 
 export default async function ClienteHome() {
   const supabase = await createClient();
@@ -37,6 +31,7 @@ export default async function ClienteHome() {
   if (isNew && !active) {
     return (
       <div className="space-y-6">
+        <AppNudges />
         <div className="rounded-3xl bg-brand-green p-6 text-brand-cream sm:p-8">
           <p className="text-sm text-brand-cream/70">¡Bienvenido{firstName ? `, ${firstName}` : ''} a gruafy!</p>
           <h1 className="mt-1 font-display text-2xl sm:text-3xl">¿Te quedaste varado?</h1>
@@ -51,18 +46,8 @@ export default async function ClienteHome() {
           </Button>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          {ONBOARDING.map((s, i) => (
-            <div key={s.title} className="relative rounded-2xl border border-border bg-card p-5">
-              <span className="absolute right-4 top-4 font-display text-xl text-brand-orange/40">{i + 1}</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-green">
-                <s.icon className="h-5 w-5" />
-              </div>
-              <h3 className="mt-3 font-semibold">{s.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{s.text}</p>
-            </div>
-          ))}
-        </div>
+        {/* How-to real (claro, no confunde). Reemplaza las tarjetas con el "+". */}
+        <HowTo role="cliente" />
 
         <div className="flex flex-col items-start gap-2 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
