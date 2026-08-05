@@ -23,6 +23,7 @@ const FAQ = [
   { q: '¿Qué incluye el precio?', a: 'La movida base, los kilómetros de la ruta y los dollys que hagan falta. No incluye peajes ni esperas: esos se avisan y se suman como adicionales al final.' },
   { q: '¿En qué zona operan?', a: 'Únicamente en el AMBA. La proyección 2026 es una cobertura total del AMBA' },
   { q: '¿Puedo ir con la grúa?', a: 'Sí, hasta 2 personas viajan con el vehículo. Si necesitás transporte para más gente, se pide aparte.' },
+  { q: '¿Dónde puedo obtener más información?', a: 'En nuestro Centro de ayuda tenés guías paso a paso para clientes y para grúas. Entrá con el botón de acá abajo, o desde el acceso "Ayuda" cuando estás dentro de la app.' },
 ];
 
 export default function LandingPage() {
@@ -140,6 +141,12 @@ export default function LandingPage() {
               <p className="mt-3 text-muted-foreground">{f.a}</p>
             </details>
           ))}
+        </div>
+        <div className="mx-auto mt-8 max-w-3xl text-center">
+          <p className="text-sm text-muted-foreground">¿Te quedó una duda?</p>
+          <Button asChild size="lg" variant="outline" className="mt-3">
+            <Link href="/ayuda">Ir al Centro de ayuda <ArrowRight /></Link>
+          </Button>
         </div>
       </section>
     </>

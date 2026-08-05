@@ -17,6 +17,7 @@ import {
   Undo2,
   Settings,
   ScrollText,
+  LifeBuoy,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,7 @@ const ICONS = {
   refund: Undo2,
   settings: Settings,
   audit: ScrollText,
+  help: LifeBuoy,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

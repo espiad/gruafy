@@ -10,6 +10,7 @@ const NAV: NavItem[] = [
   { href: '/cliente/solicitar', label: 'Pedir', icon: 'plus' },
   { href: '/cliente/vehiculos', label: 'Vehículos', icon: 'car' },
   { href: '/cliente/historial', label: 'Historial', icon: 'clock' },
+  { href: '/ayuda', label: 'Ayuda', icon: 'help' },
   { href: '/cliente/perfil', label: 'Perfil', icon: 'user' },
 ];
 
