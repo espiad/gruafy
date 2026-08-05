@@ -94,13 +94,11 @@ export default async function ProveedorPanel() {
     }
   }
 
-  // Conductores para elegir quién maneja al aceptar.
-  const { data: drivers } = await supabase
-    .from('provider_members')
-    .select('id, full_name, role')
-    .eq('provider_id', provider.id)
-    .eq('status', 'active')
-    .order('created_at', { ascending: true });
+  // Conductores con estado de completitud: solo los completos pueden tomar auxilios.
+  const { getDriversWithStatus } = await import('@/features/providers/drivers');
+  const allDrivers = await getDriversWithStatus(supabase, provider.id);
+  const drivers = allDrivers.filter((d) => d.complete).map((d) => ({ id: d.id, full_name: d.full_name, role: d.role }));
+  const hasCompleteDriver = drivers.length > 0;
 
   return (
     <div className="space-y-8">
@@ -118,6 +116,20 @@ export default async function ProveedorPanel() {
         </div>
         <AvailabilityToggle initial={provider.is_available} />
       </div>
+
+      {!hasCompleteDriver && (
+        <div className="rounded-2xl border-2 border-warning/50 bg-warning/10 p-4">
+          <p className="font-semibold">Ya casi terminás tu configuración</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Para recibir y tomar auxilios necesitás al menos un conductor completo: nombre, DNI,
+            teléfono, <strong>licencia</strong> y <strong>foto</strong>. Quien no los tenga cargados no
+            podrá ser seleccionado.
+          </p>
+          <Link href="/proveedor/equipo" className="focus-ring mt-3 inline-flex rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-brand-cream">
+            Ir a Conductores
+          </Link>
+        </div>
+      )}
 
       {active ? (
         // Con un servicio en curso, el foco es ese: nada de pedidos nuevos.

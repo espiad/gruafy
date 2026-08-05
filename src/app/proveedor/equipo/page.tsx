@@ -7,7 +7,7 @@ import { AddDriverForm } from '@/features/providers/add-driver-form';
 import { DriverLicenseUpload } from '@/features/providers/driver-license-upload';
 import { DriverPhotoUpload } from '@/features/providers/driver-photo-upload';
 
-export const metadata: Metadata = { title: 'Equipo' };
+export const metadata: Metadata = { title: 'Conductores' };
 
 const ROLE_LABEL = { owner: 'Conductor dueño', driver: 'Conductor' };
 
@@ -53,11 +53,12 @@ export default async function EquipoPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Users className="h-5 w-5 text-brand-orange" />
-        <h1 className="font-display text-2xl">Equipo</h1>
+        <h1 className="font-display text-2xl">Conductores</h1>
       </div>
       <p className="text-sm text-muted-foreground">
-        La cuenta tiene un conductor dueño (base) y podés sumar hasta <strong>4 conductores más</strong>.
-        Cada uno y su documentación se validan con la cuenta.
+        Hay un <strong>conductor dueño</strong> (base) y podés sumar hasta <strong>4 más</strong> (5 en
+        total). <strong>Solo los conductores con nombre, DNI, teléfono, licencia y foto</strong> pueden
+        ser seleccionados para tomar un auxilio. Los que estén incompletos no aparecen como opción.
       </p>
 
       <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">

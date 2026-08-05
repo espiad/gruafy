@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 const NAV: NavItem[] = [
   { href: '/proveedor', label: 'Panel', icon: 'home', exact: true },
   { href: '/proveedor/historial', label: 'Historial', icon: 'clipboard' },
-  { href: '/proveedor/equipo', label: 'Equipo', icon: 'users' },
+  { href: '/proveedor/equipo', label: 'Conductores', icon: 'users' },
   { href: '/ayuda', label: 'Ayuda', icon: 'help' },
   { href: '/proveedor/perfil', label: 'Perfil', icon: 'user' },
 ];

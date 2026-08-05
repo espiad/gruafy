@@ -30,6 +30,18 @@ export async function setAvailability(available: boolean, lat?: number, lng?: nu
   if (available && provider.status !== 'approved') {
     return { ok: false, error: 'Tu cuenta todavía no está aprobada' };
   }
+  // No se puede estar disponible sin al menos un conductor COMPLETO (nombre, DNI,
+  // teléfono, licencia y foto). Sin eso, nadie puede tomar un auxilio.
+  if (available) {
+    const { getDriversWithStatus } = await import('./drivers');
+    const drivers = await getDriversWithStatus(supabase, provider.id);
+    if (!drivers.some((d) => d.complete)) {
+      return {
+        ok: false,
+        error: 'Necesitás al menos un conductor con nombre, DNI, teléfono, licencia y foto para ponerte disponible. Completalo en Conductores.',
+      };
+    }
+  }
   const patch: Partial<import('@/types/database').ProviderAccountRow> = { is_available: available };
   if (available && lat != null && lng != null) {
     patch.last_lat = lat;
@@ -68,17 +80,21 @@ export async function acceptOffer(orderId: string, driverId?: string): Promise<R
   const provider = await providerOf(user.id);
   if (!provider) return { ok: false, error: 'Sin proveedor' };
 
-  // Si eligió conductor, verificamos que sea un miembro activo de ESTE proveedor
-  // (no se puede asignar un conductor de otra grúa) antes de tomar la oferta.
-  if (driverId) {
-    const { data: member } = await supabase
-      .from('provider_members')
-      .select('id')
-      .eq('id', driverId)
-      .eq('provider_id', provider.id)
-      .eq('status', 'active')
-      .maybeSingle();
-    if (!member) return { ok: false, error: 'El conductor elegido no es de tu equipo' };
+  // El conductor que toma el auxilio tiene que estar COMPLETO (nombre, DNI,
+  // teléfono, licencia y foto). Si no eligen, tomamos el primero completo.
+  const { getDriversWithStatus } = await import('./drivers');
+  const drivers = await getDriversWithStatus(supabase, provider.id);
+  const completos = drivers.filter((d) => d.complete);
+  if (completos.length === 0) {
+    return { ok: false, error: 'No tenés ningún conductor completo (nombre, DNI, teléfono, licencia y foto).' };
+  }
+  let chosenDriver = driverId;
+  if (chosenDriver) {
+    if (!completos.some((d) => d.id === chosenDriver)) {
+      return { ok: false, error: 'Ese conductor no está completo (le falta licencia, foto u otro dato).' };
+    }
+  } else {
+    chosenDriver = completos[0]!.id;
   }
 
   // La ventana de pago sale de la configuración de la plataforma (no del default
@@ -96,13 +112,11 @@ export async function acceptOffer(orderId: string, driverId?: string): Promise<R
 
   // Registra qué conductor está manejando (para mostrarle los datos correctos al
   // cliente). Guardado por provider_id: solo sobre la orden que este proveedor tomó.
-  if (driverId) {
-    await supabase
-      .from('service_orders')
-      .update({ driver_id: driverId })
-      .eq('id', orderId)
-      .eq('provider_id', provider.id);
-  }
+  await supabase
+    .from('service_orders')
+    .update({ driver_id: chosenDriver })
+    .eq('id', orderId)
+    .eq('provider_id', provider.id);
 
   // Push al cliente: una grúa aceptó, hay que pagar el anticipo.
   try {
