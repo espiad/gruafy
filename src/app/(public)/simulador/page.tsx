@@ -12,8 +12,8 @@ export default function SimuladorPage() {
       <div className="mx-auto mb-10 max-w-2xl text-center">
         <h1 className="font-display text-3xl md:text-4xl">Simulá tu costo</h1>
         <p className="mt-3 text-muted-foreground">
-          Ingresá origen y destino y mirá el desglose. Sin registrarte y sin compromiso. Primero una
-          grúa acepta; recién después pagás el anticipo por Mercado Pago.
+          Movés la distancia aproximada y mirás el desglose al instante. Sin registrarte y sin
+          compromiso. Primero una grúa acepta; recién después pagás el anticipo por Mercado Pago.
         </p>
       </div>
       <SimuladorForm />
