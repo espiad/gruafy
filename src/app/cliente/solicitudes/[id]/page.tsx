@@ -128,20 +128,29 @@ export default async function SolicitudDetalle({
   // Confianza pre-pago: antes de que el cliente pague ya sabemos qué grúa aceptó.
   // Le mostramos reputación y patente (para decidir con confianza), pero NO el
   // teléfono ni el contacto: eso se revela recién cuando paga.
-  let prepay: { legal_name: string; rating_avg: number; rating_count: number; truckPatente: string | null } | null = null;
+  let prepay: { legal_name: string; rating_avg: number; rating_count: number; truckPatente: string | null; driverPhotoUrl: string | null } | null = null;
   if ((state === 'awaiting_payment' || state === 'payment_pending') && order.provider_id) {
     const { createAdminClient } = await import('@/lib/supabase/admin');
     const admin = createAdminClient();
-    const [{ data: p }, { data: trk }] = await Promise.all([
+    const [{ data: p }, { data: trk }, { data: photoDoc }] = await Promise.all([
       admin.from('provider_accounts').select('legal_name, rating_avg, rating_count').eq('id', order.provider_id).single(),
       admin.from('tow_trucks').select('patente').eq('provider_id', order.provider_id).limit(1).maybeSingle(),
+      order.driver_id
+        ? admin.from('provider_documents').select('storage_path').eq('member_id', order.driver_id).eq('doc_type', 'foto').order('created_at', { ascending: false }).limit(1).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
+    let dPhoto: string | null = null;
+    if (photoDoc?.storage_path) {
+      const { data: signed } = await admin.storage.from('documents').createSignedUrl(photoDoc.storage_path, 3600);
+      dPhoto = signed?.signedUrl ?? null;
+    }
     if (p) {
       prepay = {
         legal_name: p.legal_name,
         rating_avg: p.rating_avg,
         rating_count: p.rating_count,
         truckPatente: trk?.patente ?? null,
+        driverPhotoUrl: dPhoto,
       };
     }
   }
@@ -211,9 +220,16 @@ export default async function SolicitudDetalle({
             <ShieldCheck className="h-5 w-5 text-success" />
             <h2 className="font-semibold">Una grúa te aceptó</h2>
           </div>
-          <p className="mt-2 text-sm">
-            <strong>{prepay.legal_name}</strong>
-          </p>
+          <div className="mt-2 flex items-center gap-3">
+            {prepay.driverPhotoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={prepay.driverPhotoUrl} alt="Conductor" className="h-12 w-12 shrink-0 rounded-full border border-border object-cover" />
+            )}
+            <p className="text-sm">
+              <strong>{prepay.legal_name}</strong>
+              {prepay.driverPhotoUrl && <span className="block text-xs text-muted-foreground">Así vas a reconocer a quien te asiste</span>}
+            </p>
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
             {prepay.rating_count > 0 ? (
               <span className="inline-flex items-center gap-1">

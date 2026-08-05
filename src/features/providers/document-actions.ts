@@ -32,22 +32,33 @@ export async function recordDocument(input: z.infer<typeof recordSchema>) {
   }
 
   const supabase = await createClient();
+  let memberId = d.memberId ?? null;
   // Si el documento es de un conductor, verificamos que el miembro sea de este
   // proveedor (evita colgar un documento de otra cuenta).
-  if (d.memberId) {
+  if (memberId) {
     const { data: member } = await supabase
       .from('provider_members')
       .select('id')
-      .eq('id', d.memberId)
+      .eq('id', memberId)
       .eq('provider_id', d.providerId)
       .maybeSingle();
     if (!member) return { ok: false as const, error: 'Conductor inválido' };
+  } else if (d.ownerKind === 'driver') {
+    // Documento de conductor sin miembro explícito (ej.: la licencia que se sube en
+    // el alta): se AUTO-ASOCIA al conductor dueño, así no hay que cargarla de nuevo.
+    const { data: owner } = await supabase
+      .from('provider_members')
+      .select('id')
+      .eq('provider_id', d.providerId)
+      .eq('role', 'owner')
+      .maybeSingle();
+    memberId = owner?.id ?? null;
   }
   const { error } = await supabase.from('provider_documents').insert({
     provider_id: d.providerId,
     owner_kind: d.ownerKind,
     truck_id: null,
-    member_id: d.memberId ?? null,
+    member_id: memberId,
     doc_type: d.docType,
     doc_number: d.docNumber ?? null,
     storage_path: d.storagePath,
