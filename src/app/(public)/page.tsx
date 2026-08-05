@@ -131,9 +131,6 @@ export default function LandingPage() {
       <section id="simulador" className="container scroll-mt-20 py-20">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-semibold md:text-4xl">¿Cuánto te sale un acarreo?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            Movés la distancia y ves el desglose al instante. Sin registrarte.
-          </p>
         </div>
         <div className="mt-10">
           <SimuladorForm />

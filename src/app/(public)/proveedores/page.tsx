@@ -12,8 +12,17 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GruafyMark } from '@/components/brand/logo';
+import { createClient } from '@/lib/supabase/server';
 import { EarningsSimulator } from '@/features/pricing/earnings-simulator';
-import { ProductPeek, Testimonials } from '@/components/landing/landing-sections';
+import { ProductPeek, Testimonials, ProviderSocialProof } from '@/components/landing/landing-sections';
+
+const FAQ_PROVEEDORES = [
+  { q: '¿Cuánto cobra gruafy?', a: 'gruafy cobra una comisión del 20% del subtotal estimado, que el cliente paga por adelantado como anticipo de reserva. El resto del servicio lo cobrás vos, directo al cliente, al finalizar.' },
+  { q: '¿Necesito exclusividad o firmar contrato?', a: 'No. Te ponés disponible cuando querés y aceptás los viajes que quieras. Sin ataduras con aseguradoras ni papeleo.' },
+  { q: '¿Qué necesito para sumarme?', a: 'Tu empresa (CUIT), la grúa con su documentación (VTV, seguro) y al menos un conductor con licencia. Un administrador revisa todo antes de habilitarte.' },
+  { q: '¿Cómo cobro el saldo?', a: 'En efectivo o transferencia, directo del cliente, al terminar el servicio. Los adicionales (peajes, espera) se suman desde un catálogo con topes que definimos para evitar abusos.' },
+  { q: '¿Cuántos conductores puedo cargar?', a: 'Un conductor dueño (base) y hasta 4 conductores más por cuenta. Cada uno con su licencia y foto.' },
+];
 
 export const metadata: Metadata = {
   title: 'Sumá tu grúa',
@@ -35,7 +44,16 @@ const STEPS = [
   ['Aceptá y cobrá', 'Aceptás el viaje, hacés el servicio y cobrás el saldo directo al cliente.'],
 ];
 
-export default function ProveedoresLanding() {
+export default async function ProveedoresLanding() {
+  // Prueba social real: grúas aprobadas (sin exponer datos personales).
+  const supabase = await createClient();
+  const { data: approved, count } = await supabase
+    .from('provider_accounts')
+    .select('rating_avg, rating_count', { count: 'exact' })
+    .eq('status', 'approved')
+    .is('deleted_at', null)
+    .limit(12);
+
   return (
     <>
       {/* HERO B2B — verde de marca */}
@@ -68,6 +86,9 @@ export default function ProveedoresLanding() {
           </div>
         </div>
       </section>
+
+      {/* PRUEBA SOCIAL (real) */}
+      <ProviderSocialProof count={count ?? 0} providers={approved ?? []} />
 
       {/* BENEFICIOS */}
       <section className="container py-20">
@@ -143,6 +164,27 @@ export default function ProveedoresLanding() {
           </ul>
           <Button asChild size="lg" className="mt-8">
             <Link href="/registro/proveedor">Sumar mi grúa <ArrowRight /></Link>
+          </Button>
+        </div>
+      </section>
+
+      {/* FAQ PROVEEDORES */}
+      <section className="container pb-24">
+        <h2 className="text-center text-3xl font-semibold">Preguntas frecuentes</h2>
+        <div className="mx-auto mt-10 max-w-3xl divide-y divide-border rounded-2xl border border-border bg-card">
+          {FAQ_PROVEEDORES.map((f) => (
+            <details key={f.q} className="group px-6 py-5">
+              <summary className="focus-ring flex cursor-pointer list-none items-center justify-between rounded-md text-lg font-medium">
+                {f.q}
+                <ArrowRight className="h-5 w-5 text-brand-orange transition-transform group-open:rotate-90" />
+              </summary>
+              <p className="mt-3 text-muted-foreground">{f.a}</p>
+            </details>
+          ))}
+        </div>
+        <div className="mx-auto mt-8 max-w-3xl text-center">
+          <Button asChild size="lg" variant="outline">
+            <Link href="/ayuda">Centro de ayuda <ArrowRight /></Link>
           </Button>
         </div>
       </section>

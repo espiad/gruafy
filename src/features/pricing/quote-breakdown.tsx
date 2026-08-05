@@ -74,10 +74,6 @@ export function QuoteBreakdownCard({ quote, extrasTotal = 0 }: { quote: QuoteBre
           </p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        El costo de procesamiento es estimado y configurable. Los importes son en pesos y pueden
-        ajustarse por adicionales avisados antes de confirmar.
-      </p>
     </div>
   );
 }

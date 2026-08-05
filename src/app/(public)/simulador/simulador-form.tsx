@@ -48,7 +48,7 @@ export function SimuladorForm() {
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             Es una estimación por distancia. Al pedir de verdad, gruafy calcula la ruta exacta entre tu
-            origen y destino, y suma solo lo que corresponda.
+            origen y destino.
           </p>
         </div>
       </div>
@@ -58,10 +58,6 @@ export function SimuladorForm() {
         <Button asChild size="lg" className="w-full">
           <Link href="/registro">Registrate para pedir tu grúa</Link>
         </Button>
-        <p className="text-center text-xs text-muted-foreground">
-          El simulador no crea una orden. Para pedir de verdad necesitás una cuenta y confirmar el
-          presupuesto con la ruta real.
-        </p>
       </div>
     </div>
   );

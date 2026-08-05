@@ -13,7 +13,7 @@ interface Copy {
 
 /** Textos por estado, según quién mira (cliente o gruero). */
 function copyFor(state: OrderState, role: 'cliente' | 'gruero', etaMin?: number | null): Copy | null {
-  const eta = etaMin && etaMin > 0 ? `Llega en ~${etaMin} min. ` : '';
+  const eta = etaMin && etaMin > 0 ? `Llega en ${etaMin} min aprox. ` : '';
   const client: Partial<Record<OrderState, Copy>> = {
     awaiting_payment: { emoji: '🎉', title: '¡Una grúa aceptó tu pedido!', sub: 'Reservala pagando el anticipo acá abajo.', tone: 'orange', pulse: true },
     payment_pending: { emoji: '⏳', title: 'Confirmando tu pago…', sub: 'Puede tardar unos segundos. No cierres esta pantalla.', tone: 'warning', pulse: true },

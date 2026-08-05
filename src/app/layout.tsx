@@ -28,12 +28,13 @@ export const metadata: Metadata = {
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'gruafy', statusBarStyle: 'default' },
   icons: {
+    // ?v= fuerza a los navegadores a re-descargar el favicon (cachean por URL).
     icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.png', type: 'image/png', sizes: '48x48' },
+      { url: '/icon.svg?v=3', type: 'image/svg+xml' },
+      { url: '/favicon.png?v=3', type: 'image/png', sizes: '48x48' },
     ],
-    shortcut: '/favicon.png',
-    apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.png?v=3',
+    apple: '/apple-touch-icon.png?v=3',
   },
 };
 

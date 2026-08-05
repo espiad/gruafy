@@ -75,6 +75,48 @@ export function Testimonials({ title, items }: { title: string; items: Testimoni
   );
 }
 
+/**
+ * Prueba social de la landing B2B: cantidad REAL de grúas aprobadas + un carrusel
+ * anónimo (★ y nº de servicios, sin nombres ni caras) cuando hay al menos 3. No usa
+ * fotos personales de los grueros (son datos sensibles de verificación).
+ */
+export function ProviderSocialProof({
+  count,
+  providers,
+}: {
+  count: number;
+  providers: { rating_avg: number; rating_count: number }[];
+}) {
+  if (count < 1) return null;
+  const showCarousel = providers.length >= 3;
+  const loop = showCarousel ? [...providers, ...providers] : providers;
+  return (
+    <section className="border-y border-border bg-card py-10">
+      <div className="container">
+        <p className="text-center text-lg font-semibold">
+          <span className="text-brand-orange">+{count}</span> {count === 1 ? 'grúa ya trabaja' : 'grúas ya trabajan'} con gruafy
+        </p>
+        {showCarousel && (
+          <div className="marquee-mask relative mt-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+            <div className="animate-marquee flex w-max gap-3">
+              {loop.map((p, i) => (
+                <div key={i} className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-background px-4 py-2">
+                  <BadgeCheck className="h-4 w-4 text-brand-green" />
+                  <span className="inline-flex items-center gap-1 text-sm">
+                    <Star className="h-3.5 w-3.5 fill-brand-orange text-brand-orange" />
+                    {p.rating_count > 0 ? p.rating_avg.toFixed(1) : 'Nueva'}
+                  </span>
+                  <span className="text-xs text-muted-foreground">· {p.rating_count} servicio{p.rating_count === 1 ? '' : 's'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 const TEAM = ['Francisco Goyeneche', 'Juan Pedro Di Meola', 'Federico Goyeneche'];
 
 /**
@@ -87,7 +129,7 @@ export function TeamSection() {
       <div className="container">
         <h2 className="text-center text-3xl font-semibold">El equipo detrás de gruafy</h2>
         <p className="mx-auto mt-2 max-w-xl text-center text-brand-cream/75">
-          Tres personas obsesionadas con que nadie quede tirado en la ruta.
+          Un equipo interdisciplinario enfocado en que nunca más te quedes tirado en la ruta.
         </p>
         <div className="mx-auto mt-10 max-w-2xl">
           <FallbackImage
@@ -151,7 +193,7 @@ export function ProductPeek({ variant = 'cliente' }: { variant?: 'cliente' | 'gr
         <h2 className="text-center text-3xl font-semibold">gruafy por dentro</h2>
         <p className="mx-auto mt-2 max-w-xl text-center text-muted-foreground">
           {variant === 'cliente'
-            ? 'Simple en el peor momento: pedir, ver quién viene y seguirlo en vivo.'
+            ? 'Pedila, seguila en vivo y chau estrés.'
             : 'Todo lo que necesitás para trabajar: pedidos, ruta y cobro claro.'}
         </p>
         <div className="mt-12 grid items-start gap-8 sm:grid-cols-3">
@@ -200,7 +242,7 @@ export function ProductPeek({ variant = 'cliente' }: { variant?: 'cliente' | 'gr
               </div>
               <div className="flex items-center justify-between">
                 <Bar w="w-1/2" />
-                <span className="rounded-full bg-brand-green/15 px-2 py-0.5 text-[9px] font-semibold text-brand-green">~8 min</span>
+                <span className="rounded-full bg-brand-green/15 px-2 py-0.5 text-[9px] font-semibold text-brand-green">8 min</span>
               </div>
             </PhoneMock>
             <p className="text-center text-sm font-medium">{variant === 'cliente' ? 'Seguís la grúa en el mapa' : 'Compartís tu ubicación en vivo'}</p>
