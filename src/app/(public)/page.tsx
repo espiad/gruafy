@@ -23,7 +23,19 @@ const FAQ = [
   { q: '¿Qué incluye el precio?', a: 'La movida base, los kilómetros de la ruta y los dollys que hagan falta. No incluye peajes ni esperas: esos se avisan y se suman como adicionales al final.' },
   { q: '¿En qué zona operan?', a: 'Únicamente en el AMBA. La proyección 2026 es una cobertura total del AMBA' },
   { q: '¿Puedo ir con la grúa?', a: 'Sí, hasta 2 personas viajan con el vehículo. Si necesitás transporte para más gente, se pide aparte.' },
-  { q: '¿Dónde puedo obtener más información?', a: 'En nuestro Centro de ayuda tenés guías paso a paso para clientes y para grúas. Entrá con el botón de acá abajo, o desde el acceso "Ayuda" cuando estás dentro de la app.' },
+  {
+    q: '¿Dónde puedo obtener más información?',
+    a: (
+      <>
+        En nuestro{' '}
+        <Link href="/ayuda" className="font-medium text-brand-green underline hover:text-brand-orange">
+          Centro de ayuda
+        </Link>{' '}
+        tenés guías paso a paso para clientes y para grúas. También podés entrar desde el acceso
+        «Ayuda» cuando estás dentro de la app.
+      </>
+    ),
+  },
 ];
 
 export default function LandingPage() {

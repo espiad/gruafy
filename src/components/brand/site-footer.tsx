@@ -14,12 +14,27 @@ export function SiteFooter() {
           </p>
         </div>
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-brand-orange">Producto</h3>
+          <h3 className="mb-3 text-sm font-semibold text-brand-orange">Para clientes</h3>
           <ul className="space-y-2 text-sm text-brand-cream/80">
-            <li><Link href="/como-funciona" className="hover:text-brand-orange">Cómo funciona</Link></li>
+            <li><Link href="/#como-funciona" className="hover:text-brand-orange">Cómo funciona</Link></li>
             <li><Link href="/simulador" className="hover:text-brand-orange">Simulá tu costo</Link></li>
-            <li><Link href="/registro/proveedor" className="hover:text-brand-orange">Sumá tu grúa</Link></li>
+            <li><Link href="/cliente/solicitar" className="hover:text-brand-orange">Pedir una grúa</Link></li>
+            <li><Link href="/registro" className="hover:text-brand-orange">Crear cuenta</Link></li>
+            <li><Link href="/ingresar" className="hover:text-brand-orange">Ingresar</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-brand-orange">Para grúas</h3>
+          <ul className="space-y-2 text-sm text-brand-cream/80">
+            <li><Link href="/proveedores" className="hover:text-brand-orange">Sumá tu grúa</Link></li>
+            <li><Link href="/registro/proveedor" className="hover:text-brand-orange">Registrar mi grúa</Link></li>
             <li><Link href="/ayuda" className="hover:text-brand-orange">Centro de ayuda</Link></li>
+            {publicEnv.whatsapp && (
+              <li><a href={`https://wa.me/${publicEnv.whatsapp}`} className="hover:text-brand-orange">WhatsApp de soporte</a></li>
+            )}
+            {publicEnv.supportEmail && (
+              <li><a href={`mailto:${publicEnv.supportEmail}`} className="hover:text-brand-orange">{publicEnv.supportEmail}</a></li>
+            )}
           </ul>
         </div>
         <div>
@@ -28,19 +43,6 @@ export function SiteFooter() {
             <li><Link href="/legal/terminos-clientes" className="hover:text-brand-orange">Términos clientes</Link></li>
             <li><Link href="/legal/terminos-proveedores" className="hover:text-brand-orange">Términos proveedores</Link></li>
             <li><Link href="/legal/privacidad" className="hover:text-brand-orange">Privacidad</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-brand-orange">Contacto</h3>
-          <ul className="space-y-2 text-sm text-brand-cream/80">
-            {publicEnv.supportEmail && (
-              <li><a href={`mailto:${publicEnv.supportEmail}`} className="hover:text-brand-orange">{publicEnv.supportEmail}</a></li>
-            )}
-            {publicEnv.whatsapp && (
-              <li>
-                <a href={`https://wa.me/${publicEnv.whatsapp}`} className="hover:text-brand-orange">WhatsApp</a>
-              </li>
-            )}
           </ul>
         </div>
       </div>
