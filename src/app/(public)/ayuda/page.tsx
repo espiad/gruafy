@@ -11,7 +11,7 @@ export default function AyudaPage() {
     <div className="container max-w-4xl py-14">
       <h1 className="font-display text-3xl md:text-4xl">Centro de ayuda</h1>
       <p className="mt-3 text-muted-foreground">
-        Tutoriales y preguntas frecuentes para clientes y grúas. Buscá o filtrá por rol.
+        Tutoriales y preguntas frecuentes para clientes y grúas.
       </p>
       <div className="mt-8">
         <AyudaSearch articles={SUPPORT_ARTICLES} />

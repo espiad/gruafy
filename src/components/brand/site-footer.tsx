@@ -26,8 +26,9 @@ export function SiteFooter() {
         <div>
           <h3 className="mb-3 text-sm font-semibold text-brand-orange">Para grúas</h3>
           <ul className="space-y-2 text-sm text-brand-cream/80">
-            <li><Link href="/proveedores" className="hover:text-brand-orange">Sumá tu grúa</Link></li>
+            <li><Link href="/proveedores" className="hover:text-brand-orange">Beneficios de ser proveedor</Link></li>
             <li><Link href="/registro/proveedor" className="hover:text-brand-orange">Registrar mi grúa</Link></li>
+            <li><Link href="/ingresar" className="hover:text-brand-orange">Ingresar como proveedor</Link></li>
             <li><Link href="/ayuda" className="hover:text-brand-orange">Centro de ayuda</Link></li>
             {publicEnv.whatsapp && (
               <li><a href={`https://wa.me/${publicEnv.whatsapp}`} className="hover:text-brand-orange">WhatsApp de soporte</a></li>
