@@ -263,6 +263,76 @@ export async function uploadSituationPhoto(orderId: string, formData: FormData):
   return { ok: true, orderId };
 }
 
+/**
+ * El cliente rechaza a la grúa que aceptó (p. ej. por reputación baja) y vuelve a
+ * buscar EXCLUYENDO a ese proveedor. Si al excluirlo no queda ninguno disponible,
+ * el despacho igual se lo vuelve a ofrecer (mejor que quedarse sin grúa). Solo
+ * válido antes de pagar (awaiting_payment).
+ */
+export async function rejectAndResearch(orderId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const { data: order } = await supabase
+    .from('service_orders')
+    .select('id, client_id, state, provider_id, conditions')
+    .eq('id', orderId)
+    .single();
+  if (!order || order.client_id !== user.id) return { ok: false, error: 'Orden no encontrada' };
+  if (order.state !== 'awaiting_payment') return { ok: false, error: 'Ya no se puede cambiar de grúa' };
+  if (!order.provider_id) return { ok: false, error: 'Sin grúa asignada' };
+
+  const prevConditions = (order.conditions as Record<string, unknown>) ?? {};
+  const excluded = Array.isArray(prevConditions.excluded_providers)
+    ? (prevConditions.excluded_providers as string[])
+    : [];
+  const nextExcluded = Array.from(new Set([...excluded, order.provider_id]));
+
+  const { getPlatformSettings } = await import('@/features/pricing/settings');
+  const settings = await getPlatformSettings();
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+
+  // Liberamos al proveedor y volvemos a búsqueda (service role: pasa el trigger).
+  const { data: reset } = await admin
+    .from('service_orders')
+    .update({
+      state: 'searching_provider',
+      provider_id: null,
+      driver_id: null,
+      reserved_at: null,
+      payment_deadline: null,
+      searching_at: new Date().toISOString(),
+      offer_deadline: new Date(Date.now() + settings.oferta_proveedor_segundos * 1000).toISOString(),
+      conditions: { ...prevConditions, excluded_providers: nextExcluded } as import('@/types/database').Json,
+    })
+    .eq('id', orderId)
+    .eq('state', 'awaiting_payment')
+    .select('id');
+  if (!reset || reset.length === 0) return { ok: false, error: 'La orden cambió de estado. Actualizá.' };
+
+  // Cerramos las ofertas anteriores y re-despachamos excluyendo al rechazado.
+  await admin.from('provider_offers').update({ status: 'expired' }).eq('order_id', orderId).eq('status', 'pending');
+  await admin.from('order_events').insert({
+    order_id: orderId,
+    from_state: 'awaiting_payment',
+    to_state: 'searching_provider',
+    actor_role: 'client',
+    event: 'El cliente pidió otra grúa',
+  });
+  try {
+    const { dispatchOrder } = await import('@/features/dispatch/service');
+    await dispatchOrder(orderId, nextExcluded);
+  } catch {
+    /* si falla, queda en búsqueda */
+  }
+  revalidatePath(`/cliente/solicitudes/${orderId}`);
+  return { ok: true, orderId };
+}
+
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();

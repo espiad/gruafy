@@ -20,6 +20,7 @@ import { EmergencyButton } from '@/features/support/emergency-button';
 import { InvoiceButtons } from '@/features/orders/invoice-buttons';
 import { InsuranceGuide } from '@/features/orders/insurance-guide';
 import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
+import { LowRatingActions } from '@/features/orders/low-rating-actions';
 import { ShareTrackingButton } from '@/features/orders/share-tracking-button';
 import { haversineMeters } from '@/lib/geo/distance';
 import { formatDateTime, formatARS } from '@/lib/format';
@@ -227,10 +228,15 @@ export default async function SolicitudDetalle({
             {prepay.truckPatente && <span>· Patente {prepay.truckPatente}</span>}
           </div>
           {prepay.rating_count >= 3 && prepay.rating_avg < 3.5 ? (
-            <p className="mt-3 rounded-md bg-warning/15 p-2.5 text-xs text-warning-foreground">
-              Esta grúa tiene una reputación baja ({prepay.rating_avg.toFixed(1)}★). Si preferís, podés
-              cancelar sin costo acá abajo y buscar otra.
-            </p>
+            <div className="mt-3 rounded-md bg-warning/15 p-2.5">
+              <p className="text-xs text-warning-foreground">
+                Esta grúa tiene una reputación baja ({prepay.rating_avg.toFixed(1)}★). Mirá sus reseñas,
+                buscá otra, o continuá con el pago acá abajo.
+              </p>
+              {order.provider_id && (
+                <LowRatingActions orderId={order.id} providerId={order.provider_id} providerName={prepay.legal_name} />
+              )}
+            </div>
           ) : (
             <p className="mt-3 text-xs text-muted-foreground">
               Vas a ver su ubicación en vivo y sus datos de contacto apenas confirmes el anticipo.

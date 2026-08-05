@@ -12,7 +12,7 @@ import { getPlatformSettings } from '@/features/pricing/settings';
  * fue tomada. No se usa cercanía: para el volumen actual, que todos tengan la chance
  * es más justo y efectivo que rankear por distancia.
  */
-export async function dispatchOrder(orderId: string): Promise<{ offers: number }> {
+export async function dispatchOrder(orderId: string, exclude: string[] = []): Promise<{ offers: number }> {
   const admin = createAdminClient();
   const settings = await getPlatformSettings();
 
@@ -24,12 +24,17 @@ export async function dispatchOrder(orderId: string): Promise<{ offers: number }
   if (!order || order.state !== 'searching_provider') return { offers: 0 };
 
   // Todos los proveedores aprobados y disponibles (sin filtro de distancia).
-  const { data: providers } = await admin
+  const { data: allProviders } = await admin
     .from('provider_accounts')
     .select('id, owner_id')
     .eq('status', 'approved')
     .eq('is_available', true)
     .is('deleted_at', null);
+
+  // Excluimos los rechazados por el cliente ("buscar otro"). Pero si al excluir no
+  // queda ninguno, ofrecemos a todos igual (mejor que dejarlo sin grúa).
+  let providers = (allProviders ?? []).filter((p) => !exclude.includes(p.id));
+  if (providers.length === 0) providers = allProviders ?? [];
 
   if (!providers || providers.length === 0) {
     // Nadie disponible: no se cobra y se informa.
