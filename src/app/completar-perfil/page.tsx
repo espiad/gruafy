@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/auth/session';
 import { CompleteProfileForm } from '@/features/auth/complete-profile-form';
 

@@ -390,7 +390,7 @@ export async function createProviderAccount(input: z.infer<typeof onboardingSche
 const driverSchema = z.object({
   full_name: z.string().min(2, 'Ingresá el nombre'),
   dni: z.string().refine((v) => !v || isValidDni(v), 'DNI inválido').optional(),
-  phone: z.string().optional(),
+  phone: z.string().min(6, 'El teléfono es obligatorio'),
 });
 
 /** Agrega un conductor adicional (además del dueño). Máximo 4 adicionales. */

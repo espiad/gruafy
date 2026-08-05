@@ -24,11 +24,13 @@ export function AddDriverForm({ remaining }: { remaining: number }) {
     const form = e.currentTarget;
     const dni = String(f.get('dni') ?? '');
     if (dni && !isValidDni(dni)) return setError('Revisá el DNI.');
+    const phone = String(f.get('phone') ?? '').trim();
+    if (phone.length < 6) return setError('El teléfono del conductor es obligatorio (puede ser el de la empresa).');
     start(async () => {
       const res = await addDriver({
         full_name: String(f.get('full_name')),
         dni: dni || undefined,
-        phone: String(f.get('phone') ?? '') || undefined,
+        phone,
       });
       if (res.ok) {
         form.reset();
@@ -67,8 +69,8 @@ export function AddDriverForm({ remaining }: { remaining: number }) {
           <Input id="dni" name="dni" inputMode="numeric" placeholder="Ej: 30111222" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="phone">Teléfono (opcional)</Label>
-          <Input id="phone" name="phone" type="tel" placeholder="11 5555 5555" />
+          <Label htmlFor="phone">Teléfono</Label>
+          <Input id="phone" name="phone" type="tel" required placeholder="11 5555 5555" />
         </div>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

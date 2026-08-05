@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Truck, Users } from 'lucide-react';
+import { ArrowLeft, Truck, Users, MessageCircle, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { formatCuit } from '@/lib/validation/argentina';
 import { formatDateTime } from '@/lib/format';
@@ -55,12 +55,30 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
 
       <ProviderDecision providerId={provider.id} status={provider.status} />
 
-      {provider.owner_id && (
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="mb-2 text-sm font-semibold">Soporte de cuenta</h2>
-          <AdminPasswordReset userId={provider.owner_id} label={provider.legal_name} />
-        </div>
-      )}
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <h2 className="mb-2 text-sm font-semibold">Soporte de cuenta</h2>
+        {provider.contact_phone && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            <a
+              href={`https://wa.me/${provider.contact_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                `Hola ${provider.legal_name}, te escribo de gruafy. Entrá a tu cuenta para ver el estado de tu solicitud y qué documentación te falta o hay que renovar. ¡Gracias!`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="focus-ring inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-2 text-sm font-semibold text-brand-cream"
+            >
+              <MessageCircle className="h-4 w-4" /> WhatsApp
+            </a>
+            <a
+              href={`tel:${provider.contact_phone.replace(/\D/g, '')}`}
+              className="focus-ring inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-sm font-medium hover:bg-accent"
+            >
+              <Phone className="h-4 w-4" /> Llamar
+            </a>
+          </div>
+        )}
+        {provider.owner_id && <AdminPasswordReset userId={provider.owner_id} label={provider.legal_name} />}
+      </div>
 
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><Truck className="h-4 w-4" /> Grúas</h2>

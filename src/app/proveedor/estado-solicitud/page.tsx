@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server';
 import { DocumentsManager } from '@/features/providers/documents-manager';
 import { SubmitReviewButton } from '@/features/providers/submit-review-button';
 import { OnboardingProgress } from '@/features/providers/onboarding-progress';
+import { OrderAutoRefresh } from '@/features/orders/order-live';
+import { publicEnv } from '@/lib/env';
 import type { ProviderStatus } from '@/types/database';
 
 export const metadata: Metadata = { title: 'Estado de tu solicitud' };
@@ -47,8 +49,13 @@ export default async function EstadoSolicitudPage() {
   const ui = STATUS_UI[provider.status];
   const editable = provider.status === 'draft' || provider.status === 'rejected';
 
+  const waiting = provider.status === 'submitted' || provider.status === 'under_review';
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {/* Se refresca solo: cuando el admin aprueba, la pantalla lo reconoce y pasa
+          al panel, sin que el proveedor tenga que actualizar (pensado para todos). */}
+      <OrderAutoRefresh active intervalMs={5000} />
       <OnboardingProgress current={editable ? 4 : 5} />
 
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -76,6 +83,26 @@ export default async function EstadoSolicitudPage() {
 
       {editable && (
         <SubmitReviewButton disabled={(docs ?? []).length === 0} />
+      )}
+
+      {/* Ya enviado: no queda nada por hacer del lado del proveedor. Le damos un
+          atajo para agilizar por WhatsApp con soporte. */}
+      {waiting && publicEnv.whatsapp && (
+        <div className="rounded-2xl border border-border bg-card p-5 text-center">
+          <p className="text-sm text-muted-foreground">
+            Recibimos tu solicitud. Un administrador la va a revisar. ¿Querés agilizar?
+          </p>
+          <a
+            href={`https://wa.me/${publicEnv.whatsapp}?text=${encodeURIComponent(
+              `Hola, soy proveedor de gruafy (${provider.legal_name}). Ya envié mi solicitud y estoy esperando que me avisen si quedé dado de alta. ¿Me pueden dar una mano?`,
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="focus-ring mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-brand-cream"
+          >
+            Escribir a soporte por WhatsApp
+          </a>
+        </div>
       )}
     </div>
   );

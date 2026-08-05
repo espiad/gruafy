@@ -49,25 +49,36 @@ export function DocumentsManager({
 
   async function onUpload(dt: DocType, file: File) {
     setError(null);
-    if (!ALLOWED.includes(file.type)) return setError('Formato no permitido. Subí imagen o PDF.');
-    if (file.size > MAX_BYTES) return setError('El archivo supera los 8 MB.');
-    if (!hasSupabaseConfig) return setError('Supabase no está configurado todavía.');
+    if (!ALLOWED.includes(file.type)) return setError('Subí una foto (JPG/PNG) o un PDF.');
+    if (!hasSupabaseConfig) return setError('Almacenamiento no configurado todavía.');
 
     setBusy(dt.key);
     try {
+      let toUpload: Blob = file;
+      let contentType = file.type;
+      let ext = 'bin';
+      if (file.type.startsWith('image/')) {
+        // Las fotos se comprimen en el navegador: aceptamos cualquier peso y sube rápido.
+        const { compressImage } = await import('@/lib/image/compress');
+        toUpload = await compressImage(file, 1600, 0.75);
+        contentType = 'image/jpeg';
+        ext = 'jpg';
+      } else {
+        // PDF: si es enorme, pedimos una foto (no se puede comprimir en el navegador).
+        if (file.size > MAX_BYTES) {
+          setBusy(null);
+          return setError('Ese PDF pesa demasiado. Sacale una foto a la licencia y subí la foto (se comprime sola).');
+        }
+        ext = 'pdf';
+      }
       const supabase = createClient();
-      const path = `${providerId}/${dt.key}-${Date.now()}-${sanitizeFilename(file.name)}`;
-      const { error: upErr } = await supabase.storage.from('documents').upload(path, file, {
-        contentType: file.type,
+      const path = `${providerId}/${dt.key}-${Date.now()}-${sanitizeFilename(file.name).replace(/\.[^.]+$/, '')}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('documents').upload(path, toUpload, {
+        contentType,
         upsert: false,
       });
       if (upErr) throw new Error(upErr.message);
-      const res = await recordDocument({
-        providerId,
-        ownerKind: dt.kind,
-        docType: dt.key,
-        storagePath: path,
-      });
+      const res = await recordDocument({ providerId, ownerKind: dt.kind, docType: dt.key, storagePath: path });
       if (!res.ok) throw new Error(res.error);
       router.refresh();
     } catch (e) {
@@ -88,8 +99,14 @@ export function DocumentsManager({
     <div className="space-y-3 rounded-2xl border border-border bg-card p-6">
       <h2 className="font-semibold">Documentación</h2>
       <p className="text-sm text-muted-foreground">
-        Imágenes o PDF, hasta 8 MB. Un administrador revisa cada documento.
+        Podés subir una <strong>foto</strong> (sacada con el celu), un papel escaneado o un <strong>PDF</strong> — lo
+        que tengas más a mano. Las fotos se comprimen solas. Un administrador revisa cada documento.
       </p>
+      {busy && (
+        <p className="flex items-center gap-2 rounded-md bg-brand-orange/10 p-3 text-sm font-medium text-brand-green">
+          <Loader2 className="h-4 w-4 animate-spin" /> Subiendo el archivo… no cierres esta pantalla.
+        </p>
+      )}
       {error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       <ul className="divide-y divide-border">
         {docTypes.map((dt) => {

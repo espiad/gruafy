@@ -73,15 +73,25 @@ export function ProviderDecision({ providerId, status }: { providerId: string; s
         </div>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => decide('approved')} disabled={loading !== null || current === 'approved'}>
-            {loading === 'approved' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Aprobar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setMode('rejecting')} disabled={loading !== null}>
-            <XCircle className="h-4 w-4" /> Rechazar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setMode('suspending')} disabled={loading !== null || current !== 'approved'}>
-            <Ban className="h-4 w-4" /> Suspender
-          </Button>
+          {/* Aprobar/Reactivar: disponible en pendiente, rechazado o suspendido. */}
+          {current !== 'approved' && (
+            <Button size="sm" onClick={() => decide('approved')} disabled={loading !== null}>
+              {loading === 'approved' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              {current === 'suspended' || current === 'rejected' ? 'Reactivar (aprobar)' : 'Aprobar'}
+            </Button>
+          )}
+          {/* Rechazar: SOLO mientras está pendiente de decisión inicial. */}
+          {(current === 'draft' || current === 'submitted' || current === 'under_review') && (
+            <Button size="sm" variant="outline" onClick={() => setMode('rejecting')} disabled={loading !== null}>
+              <XCircle className="h-4 w-4" /> Rechazar
+            </Button>
+          )}
+          {/* Suspender: SOLO si ya está aprobado. */}
+          {current === 'approved' && (
+            <Button size="sm" variant="outline" onClick={() => setMode('suspending')} disabled={loading !== null}>
+              <Ban className="h-4 w-4" /> Suspender
+            </Button>
+          )}
         </div>
       )}
       {okMsg && <p className="mt-2 text-sm text-success">{okMsg}</p>}
