@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/brand/logo';
 import { Button } from '@/components/ui/button';
+import { MobileNav } from '@/components/brand/mobile-nav';
 
 const NAV = [
   { href: '/#como-funciona', label: 'Cómo funciona' },
@@ -30,13 +31,16 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Cuenta: siempre visible y a mano, dentro y fuera del menú. */}
           <Button asChild variant="ghost" size="sm">
             <Link href="/ingresar">Ingresar</Link>
           </Button>
           <Button asChild size="sm">
             <Link href="/registro">Registrate</Link>
           </Button>
+          {/* Navegación de la landing: en mobile se pliega en la hamburguesa. */}
+          <MobileNav items={NAV} />
         </div>
       </div>
     </header>

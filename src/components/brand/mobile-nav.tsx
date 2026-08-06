@@ -1,0 +1,75 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Menu, X } from 'lucide-react';
+
+interface Item {
+  href: string;
+  label: string;
+}
+
+/**
+ * Menú hamburguesa para mobile. En pantallas chicas los enlaces de navegación no
+ * entraban en la barra y quedaban ocultos; acá se despliegan en un panel. Los
+ * accesos de cuenta (Ingresar / Registrate) quedan SIEMPRE visibles fuera del
+ * menú, porque son las acciones que más se tocan.
+ */
+export function MobileNav({ items }: { items: Item[] }) {
+  const [open, setOpen] = useState(false);
+
+  // Con el panel abierto, bloqueamos el scroll del fondo.
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open]);
+
+  return (
+    <div className="md:hidden">
+      <button
+        onClick={() => setOpen(true)}
+        aria-label="Abrir menú"
+        aria-expanded={open}
+        className="focus-ring rounded-md p-2 text-brand-green hover:bg-brand-green/10"
+      >
+        <Menu className="h-6 w-6" />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 bg-brand-ink/40" onClick={() => setOpen(false)}>
+          <nav
+            className="ml-auto flex h-full w-72 max-w-[85%] flex-col bg-background p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-muted-foreground">Menú</span>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Cerrar menú"
+                className="focus-ring rounded-md p-2 text-muted-foreground hover:bg-muted"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <ul className="mt-4 space-y-1">
+              {items.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="focus-ring block rounded-lg px-3 py-3 text-base font-medium text-brand-green hover:bg-brand-orange/10"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+      )}
+    </div>
+  );
+}

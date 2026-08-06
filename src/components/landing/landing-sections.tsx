@@ -131,13 +131,13 @@ export function TeamSection() {
         <p className="mx-auto mt-2 max-w-xl text-center text-brand-cream/75">
           Un equipo interdisciplinario enfocado en que nunca más te quedes tirado en la ruta.
         </p>
-        <div className="mx-auto mt-10 max-w-2xl">
+        <div className="mx-auto mt-10 max-w-md">
           <FallbackImage
             src="/brand/equipo.jpg"
             alt="Equipo de gruafy"
-            className="aspect-[16/10] w-full rounded-2xl object-cover shadow-2xl"
+            className="aspect-square w-full rounded-2xl object-cover shadow-2xl"
             fallback={
-              <div className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-2 rounded-2xl bg-brand-ink/50 ring-1 ring-brand-cream/10">
+              <div className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-2xl bg-brand-ink/50 ring-1 ring-brand-cream/10">
                 <ImageIcon className="h-8 w-8 text-brand-cream/40" />
                 <p className="text-sm text-brand-cream/50">Subí la foto a public/brand/equipo.jpg</p>
               </div>

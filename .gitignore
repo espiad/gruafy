@@ -39,3 +39,6 @@ tsconfig.tsbuildinfo
 /reference/extracted
 /reference/*.zip
 .env*
+
+# Fotos originales sin comprimir (las versiones optimizadas viven en public/brand)
+assets-originales/
