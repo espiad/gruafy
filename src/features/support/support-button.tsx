@@ -1,6 +1,7 @@
 'use client';
 
-import { MessageCircle, Phone } from 'lucide-react';
+import { useState } from 'react';
+import { MessageCircle, Phone, LifeBuoy, X } from 'lucide-react';
 import { publicEnv } from '@/lib/env';
 
 /**
@@ -47,10 +48,40 @@ export function SupportButton({
     );
   }
 
+  // Plegado por defecto: en la pantalla del servicio competía con las acciones
+  // reales y se tocaba por error. Ahora es un enlace discreto que abre el panel.
+  return <SoporteDesplegable waUrl={waUrl} telUrl={telUrl} />;
+}
+
+function SoporteDesplegable({ waUrl, telUrl }: { waUrl: string; telUrl: string }) {
+  const [abierto, setAbierto] = useState(false);
+
+  if (!abierto) {
+    return (
+      <button
+        onClick={() => setAbierto(true)}
+        className="focus-ring mx-auto flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground hover:text-brand-green"
+      >
+        <LifeBuoy className="h-3.5 w-3.5" /> ¿Necesitás una mano?
+      </button>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <p className="text-sm font-medium">¿Necesitás una mano?</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">Te contactamos con soporte al toque, con tu contexto ya cargado.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium">Hablá con soporte</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Te escribimos con tu contexto ya cargado.</p>
+        </div>
+        <button
+          onClick={() => setAbierto(false)}
+          aria-label="Cerrar"
+          className="focus-ring rounded-md p-1 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
       <div className="mt-3 flex gap-2">
         <a
           href={waUrl}

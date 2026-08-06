@@ -13,7 +13,7 @@ import { ReviewForm } from '@/features/reviews/review-form';
 import { OrderAutoRefresh, OrderRealtime, SearchingCard, PaymentCountdown, CancelAwaitingPayment } from '@/features/orders/order-live';
 import { StateAlert } from '@/features/orders/live-alert';
 import { FocusDetails } from '@/components/ui/focus-details';
-import { Star, ShieldCheck, Users } from 'lucide-react';
+import { Star, ShieldCheck } from 'lucide-react';
 import { StatusHero } from '@/features/orders/status-hero';
 import { SupportButton } from '@/features/support/support-button';
 import { EmergencyButton } from '@/features/support/emergency-button';
@@ -21,6 +21,7 @@ import { InvoiceButtons } from '@/features/orders/invoice-buttons';
 import { InsuranceGuide } from '@/features/orders/insurance-guide';
 import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
 import { LowRatingActions } from '@/features/orders/low-rating-actions';
+import { PassengersCheck } from '@/features/orders/passengers-check';
 import { ShareTrackingButton } from '@/features/orders/share-tracking-button';
 import { haversineMeters } from '@/lib/geo/distance';
 import { formatDateTime, formatARS } from '@/lib/format';
@@ -75,6 +76,9 @@ export default async function SolicitudDetalle({
   const revealed = REVEAL_STATES.includes(state);
   const mpConfigured = Boolean(serverEnv.mp().accessToken);
   const isProduction = paymentsMode() === 'production';
+
+  const { getPlatformSettings } = await import('@/features/pricing/settings');
+  const maxPasajeros = (await getPlatformSettings()).max_pasajeros;
 
   const TRACK_STATES: OrderState[] = ['provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit'];
   const showMap = TRACK_STATES.includes(state);
@@ -370,15 +374,9 @@ export default async function SolicitudDetalle({
         />
       )}
 
-      {/* Aviso clave cuando la grúa va en camino: máx. 2 personas y no abandono. */}
-      {state === 'provider_en_route' && (
-        <div className="rounded-2xl border-2 border-warning/50 bg-warning/10 p-4">
-          <p className="flex items-center gap-2 font-semibold"><Users className="h-4 w-4 text-warning-foreground" /> Antes de que llegue la grúa</p>
-          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            <li>· Con la grúa viajan <strong>máximo 2 personas</strong>. Si son más, es el momento de coordinar otro vehículo (remís, taxi, alguien que los pase a buscar).</li>
-            <li>· El gruero <strong>no puede dejar a nadie en la ruta</strong> (abandono de persona). Por eso, si son más de 2, resolvelo ahora para no demorar la salida.</li>
-          </ul>
-        </div>
+      {/* Cupo del vehículo: hay que responderlo, no alcanza con avisar. */}
+      {(state === 'paid' || state === 'provider_en_route') && (
+        <PassengersCheck orderId={order.id} max={maxPasajeros} />
       )}
 
       {/* Ayuda humana durante estados activos (incl. esperas que solo admin cancela). */}

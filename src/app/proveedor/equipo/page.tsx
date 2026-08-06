@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { Users } from 'lucide-react';
+import Link from 'next/link';
+import { Users, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/auth/session';
 import { AddDriverForm } from '@/features/providers/add-driver-form';
@@ -57,6 +58,10 @@ export default async function EquipoPage() {
 
   return (
     <div className="space-y-6">
+      {/* Se llega acá desde el aviso del panel: dejamos la vuelta a mano. */}
+      <Link href="/proveedor" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> Volver al panel
+      </Link>
       <div className="flex items-center gap-2">
         <Users className="h-5 w-5 text-brand-orange" />
         <h1 className="font-display text-2xl">Conductores</h1>

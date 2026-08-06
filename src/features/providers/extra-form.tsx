@@ -18,6 +18,7 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<{ label: string; amount: number; enRevision: boolean } | null>(null);
   const activos = useMemo(() => adicionales.filter((a) => a.activo), [adicionales]);
   const [key, setKey] = useState<string>(activos[0]?.key ?? '');
 
@@ -26,6 +27,7 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setOk(null);
     const form = e.currentTarget;
     const f = new FormData(form);
     // En modo fijo el monto lo pone el catálogo; en los otros, lo escribe el gruero.
@@ -42,6 +44,9 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
       const res = await addExtra({ orderId, category: key, reason: String(f.get('reason')), amount });
       if (res.ok) {
         form.reset();
+        // Confirmación explícita: antes se agregaba en silencio (y la lista queda
+        // plegada), así que parecía que no se había cargado.
+        setOk({ label: def?.label ?? 'Adicional', amount, enRevision: Boolean(res.needsReview) });
         router.refresh();
       } else setError(res.error ?? 'No pudimos cargar el adicional');
     });
@@ -94,6 +99,22 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
         <label className="mb-1 block text-xs font-medium">Motivo / detalle</label>
         <Input name="reason" required placeholder="Ej: peaje Autopista Illia" className="h-11" />
       </div>
+      {ok && (
+        <div className={`rounded-lg p-3 text-sm ${ok.enRevision ? 'bg-warning/15 text-warning-foreground' : 'bg-success/10 text-success'}`}>
+          {ok.enRevision ? (
+            <>
+              <strong>{ok.label} · {formatARS(ok.amount)} quedó EN REVISIÓN.</strong> Supera el tope de
+              auto-aprobación, así que todavía <strong>no suma</strong> al total a cobrar. Un
+              administrador lo revisa.
+            </>
+          ) : (
+            <>
+              <strong>{ok.label} · {formatARS(ok.amount)} agregado.</strong> Ya suma al total a cobrarle
+              al cliente.
+            </>
+          )}
+        </div>
+      )}
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" disabled={pending} className="h-11">
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}

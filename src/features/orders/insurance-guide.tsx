@@ -72,15 +72,15 @@ export function InsuranceGuide({
       <ol className="mt-3 space-y-2 text-sm">
         <li className="flex gap-2">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-semibold text-brand-green">1</span>
-          Pedí la <strong>factura del servicio</strong> al gruero (botón de arriba) y el comprobante de gruafy.
+          <span>Pedí la <strong>factura del servicio</strong> al gruero (botón de arriba) y el comprobante de gruafy.</span>
         </li>
         <li className="flex gap-2">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-semibold text-brand-green">2</span>
-          Copiá el <strong>resumen del servicio</strong> de acá abajo con todos los datos del viaje.
+          <span>Copiá el <strong>resumen del servicio</strong> de acá abajo con todos los datos del viaje.</span>
         </li>
         <li className="flex gap-2">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-semibold text-brand-green">3</span>
-          Presentá factura + resumen a tu seguro (app, mail o teléfono) y pedí el <strong>reintegro por asistencia/acarreo</strong>.
+          <span>Presentá factura + resumen a tu seguro (app, mail o teléfono) y pedí el <strong>reintegro por asistencia/acarreo</strong>.</span>
         </li>
       </ol>
 

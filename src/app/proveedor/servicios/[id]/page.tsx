@@ -7,6 +7,7 @@ import { ServiceActionsPanel } from '@/features/providers/service-actions-panel'
 import { ExtraForm } from '@/features/providers/extra-form';
 import { LocationSender } from '@/features/tracking/location-sender';
 import { OrderAutoRefresh, OrderRealtime } from '@/features/orders/order-live';
+import { StateAlert } from '@/features/orders/live-alert';
 import { StatusHero } from '@/features/orders/status-hero';
 import { FocusDetails } from '@/components/ui/focus-details';
 import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
@@ -17,7 +18,9 @@ import { getPlatformSettings } from '@/features/pricing/settings';
 import { formatARS, formatDistance } from '@/lib/format';
 import { STATE_LABELS, isTerminal, type OrderState } from '@/features/orders/state-machine';
 
-const PAID_STATES: OrderState[] = ['paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending'];
+// Incluye 'completed': al cerrar el servicio el gruero NO debe perder el contacto
+// del cliente ni la dirección (los puede necesitar después).
+const PAID_STATES: OrderState[] = ['paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending', 'completed'];
 const ACTIVE_TRACK: OrderState[] = ['provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit'];
 
 function digits(phone: string | null | undefined) {
@@ -77,6 +80,8 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
     <div className="mx-auto max-w-2xl space-y-5">
       {!isTerminal(state) && <OrderRealtime orderId={order.id} />}
       {!isTerminal(state) && <OrderAutoRefresh active intervalMs={4000} />}
+      {/* Aviso sonoro en CADA cambio de estado, también del lado del gruero. */}
+      <StateAlert state={state} />
 
       <div className="flex items-center justify-between">
         <Link href="/proveedor" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">
@@ -181,13 +186,9 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
         )}
       </FocusDetails>
 
-      {/* Ayuda humana + emergencia siempre a mano durante el servicio */}
-      {!isTerminal(state) && (
-        <>
-          <SupportButton role="gruero" orderId={order.id} stateLabel={STATE_LABELS[state]} />
-          <EmergencyButton />
-        </>
-      )}
+      {/* Ayuda humana siempre a mano (también con el servicio ya cerrado). */}
+      <SupportButton role="gruero" orderId={order.id} stateLabel={STATE_LABELS[state]} />
+      {!isTerminal(state) && <EmergencyButton />}
     </div>
   );
 }

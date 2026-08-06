@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { assertTransition, type OrderState, type Actor } from '@/features/orders/state-machine';
 import { isValidCuit, normalizePatente, isValidPatente, isValidDni } from '@/lib/validation/argentina';
 
-type Result = { ok: boolean; error?: string; value?: unknown };
+type Result = { ok: boolean; error?: string; value?: unknown; needsReview?: boolean };
 
 async function providerOf(userId: string) {
   const supabase = await createClient();
@@ -331,7 +331,8 @@ export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Resu
   if (error) return { ok: false, error: 'No pudimos cargar el adicional' };
   revalidatePath(`/proveedor/servicios/${parsed.data.orderId}`);
   revalidatePath(`/cliente/solicitudes/${parsed.data.orderId}`);
-  return { ok: true };
+  // needsReview: el form avisa que ese monto todavía NO suma al total.
+  return { ok: true, needsReview: status === 'needs_review' };
 }
 
 const onboardingSchema = z.object({

@@ -24,19 +24,30 @@ export function NewOfferAlert({ count }: { count: number }) {
  * aceptó, se confirmó el pago, la grúa llegó, se completó). Evita que se pierda
  * el cambio si dejó el teléfono a un lado.
  */
+/** Un aviso por CADA estado del servicio: ninguno pasa desapercibido. */
 const ALERTS: Record<string, string> = {
+  searching_provider: '🔎 Buscando tu grúa…',
   awaiting_payment: '✅ ¡Una grúa aceptó! Reservá con el anticipo',
+  payment_pending: '⏳ Estamos confirmando tu pago',
   paid: '💳 Pago confirmado — tu grúa está en camino',
   provider_en_route: '🚚 Tu grúa va en camino — recordá: máx. 2 personas',
   provider_arrived: '📍 Tu grúa llegó al punto de encuentro',
-  completed: '🏁 Servicio completado',
+  vehicle_loaded: '🔧 Tu vehículo ya está cargado',
+  in_transit: '🛣️ En camino al destino',
+  completion_pending: '🏁 Llegaron al destino',
+  completed: '⭐ Servicio finalizado — dejanos tu reseña',
+  no_provider: '😕 No encontramos una grúa disponible',
+  payment_expired: '⌛ Se venció el tiempo de pago',
+  cancelled_by_client: '❌ La solicitud fue cancelada',
+  cancelled_by_provider: '❌ La grúa canceló el servicio',
+  cancelled_by_admin: '❌ El servicio fue cancelado',
 };
 
 export function StateAlert({ state }: { state: string }) {
   const prev = useRef<string | null>(null);
   useEffect(() => {
-    if (prev.current !== null && prev.current !== state && ALERTS[state]) {
-      notify(ALERTS[state]);
+    if (prev.current !== null && prev.current !== state) {
+      notify(ALERTS[state] ?? 'Tu servicio cambió de estado');
     }
     prev.current = state;
   }, [state]);
