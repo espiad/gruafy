@@ -85,10 +85,11 @@ export function ProviderSocialProof({
   providers,
 }: {
   count: number;
-  providers: { rating_avg: number; rating_count: number }[];
+  providers: { legal_name: string }[];
 }) {
   if (count < 1) return null;
   const showCarousel = providers.length >= 3;
+  // Duplicamos para que el loop del marquee sea continuo.
   const loop = showCarousel ? [...providers, ...providers] : providers;
   return (
     <section className="border-y border-border bg-card py-10">
@@ -100,13 +101,9 @@ export function ProviderSocialProof({
           <div className="marquee-mask relative mt-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
             <div className="animate-marquee flex w-max gap-3">
               {loop.map((p, i) => (
-                <div key={i} className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-background px-4 py-2">
-                  <BadgeCheck className="h-4 w-4 text-brand-green" />
-                  <span className="inline-flex items-center gap-1 text-sm">
-                    <Star className="h-3.5 w-3.5 fill-brand-orange text-brand-orange" />
-                    {p.rating_count > 0 ? p.rating_avg.toFixed(1) : 'Nueva'}
-                  </span>
-                  <span className="text-xs text-muted-foreground">· {p.rating_count} servicio{p.rating_count === 1 ? '' : 's'}</span>
+                <div key={i} className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-background px-5 py-2.5">
+                  <BadgeCheck className="h-4 w-4 shrink-0 text-brand-green" />
+                  <span className="whitespace-nowrap text-sm font-medium">{p.legal_name}</span>
                 </div>
               ))}
             </div>

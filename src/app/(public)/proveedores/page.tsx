@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GruafyMark } from '@/components/brand/logo';
+import { FallbackImage } from '@/components/brand/fallback-image';
 import { createClient } from '@/lib/supabase/server';
 import { EarningsSimulator } from '@/features/pricing/earnings-simulator';
 import { getPublicPlatformSettings, toPricingSettings } from '@/features/pricing/settings';
@@ -51,7 +52,7 @@ export default async function ProveedoresLanding() {
   const supabase = await createClient();
   const { data: approved, count } = await supabase
     .from('provider_accounts')
-    .select('rating_avg, rating_count', { count: 'exact' })
+    .select('legal_name', { count: 'exact' })
     .eq('status', 'approved')
     .is('deleted_at', null)
     .limit(12);
@@ -66,7 +67,7 @@ export default async function ProveedoresLanding() {
               Para grúas y proveedores
             </span>
             <h1 className="font-display text-4xl leading-[1.05] sm:text-5xl">
-              Más viajes. Sin aseguradoras.
+              Más viajes. Menos problemas.
             </h1>
             <p className="max-w-md text-lg text-brand-cream/85">
               Sumá tu grúa a gruafy y recibí pedidos de acarreo en AMBA. Cobrás directo, elegís cuándo
@@ -82,9 +83,18 @@ export default async function ProveedoresLanding() {
             </div>
           </div>
           <div className="flex justify-center md:justify-end">
-            <div className="flex aspect-square w-full max-w-sm items-center justify-center rounded-[2rem] bg-brand-ink shadow-2xl">
-              <GruafyMark className="h-28 w-auto text-brand-orange sm:h-40" />
-            </div>
+            {/* Foto de grueros/proveedores. Subila a public/brand/proveedores.jpg;
+                hasta que exista, cae con gracia al isotipo sobre fondo de marca. */}
+            <FallbackImage
+              src="/brand/proveedores.jpg"
+              alt="Grueros trabajando con gruafy"
+              className="aspect-square w-full max-w-sm rounded-[2rem] object-cover shadow-2xl"
+              fallback={
+                <div className="flex aspect-square w-full max-w-sm items-center justify-center rounded-[2rem] bg-brand-ink shadow-2xl">
+                  <GruafyMark className="h-28 w-auto text-brand-orange sm:h-40" />
+                </div>
+              }
+            />
           </div>
         </div>
       </section>
