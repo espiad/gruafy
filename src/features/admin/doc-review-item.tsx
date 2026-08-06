@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSignedDocUrl, reviewDocument } from './actions';
+import { ImageViewer } from '@/components/ui/image-viewer';
 
 const DOC_LABELS: Record<string, string> = {
   seguro_empresa: 'Seguro de la empresa',
@@ -41,12 +42,17 @@ export function DocReviewItem({
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [verUrl, setVerUrl] = useState<string | null>(null);
+  const [cargandoUrl, setCargandoUrl] = useState(false);
   const review = REVIEW_UI[reviewStatus];
 
   async function view() {
     setError(null);
+    setCargandoUrl(true);
     const url = await getSignedDocUrl(storagePath);
-    if (url) window.open(url, '_blank', 'noopener');
+    setCargandoUrl(false);
+    // Se ve dentro de la app: abrir una pestaña nueva dejaba al admin sin vuelta atrás.
+    if (url) setVerUrl(url);
     else setError('No pudimos generar el enlace.');
   }
 
@@ -77,8 +83,8 @@ export function DocReviewItem({
           </span>
           {adminNote && <p className="text-xs text-muted-foreground">Nota: {adminNote}</p>}
         </div>
-        <Button variant="outline" size="sm" onClick={view}>
-          <Eye className="h-4 w-4" /> Ver
+        <Button variant="outline" size="sm" onClick={view} disabled={cargandoUrl}>
+          {cargandoUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Ver
         </Button>
       </div>
 
@@ -108,6 +114,14 @@ export function DocReviewItem({
         </div>
       )}
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+
+      {verUrl && (
+        <ImageViewer
+          url={verUrl}
+          alt={DOC_LABELS[docType] ?? docType}
+          onClose={() => setVerUrl(null)}
+        />
+      )}
     </li>
   );
 }

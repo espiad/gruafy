@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, MapPin, Flag, Timer, Car, Bike, User, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { acceptOffer, rejectOffer } from './actions';
+import { ImageViewer } from '@/components/ui/image-viewer';
 import { formatARS, formatDistance } from '@/lib/format';
 
 interface Driver {
@@ -41,6 +42,8 @@ export function OfferCard(props: Props) {
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState<number>(0);
   const [driverId, setDriverId] = useState<string>(props.drivers[0]?.id ?? '');
+  const [verFoto, setVerFoto] = useState(false);
+  const [fotoLista, setFotoLista] = useState(false);
 
   useEffect(() => {
     const to = new Date(props.expiresAt).getTime();
@@ -100,19 +103,38 @@ export function OfferCard(props: Props) {
       </div>
 
       {props.situationPhotoUrl && (
-        <a
-          href={props.situationPhotoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="focus-ring group relative mt-3 block overflow-hidden rounded-lg border border-border"
-          title="Tocá para ver la foto completa"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={props.situationPhotoUrl} alt="Situación del vehículo" className="max-h-40 w-full object-cover" />
-          <span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-md bg-brand-ink/80 px-2 py-1 text-xs font-medium text-brand-cream">
-            <Maximize2 className="h-3 w-3" /> Ver foto
-          </span>
-        </a>
+        <>
+          <button
+            type="button"
+            onClick={() => setVerFoto(true)}
+            className="focus-ring relative mt-3 block w-full overflow-hidden rounded-lg border border-border"
+            title="Tocá para ver la foto completa"
+          >
+            {/* Placeholder mientras baja: así se nota que hay una foto. */}
+            {!fotoLista && (
+              <div className="flex h-40 w-full items-center justify-center bg-muted">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={props.situationPhotoUrl}
+              alt="Situación del vehículo"
+              onLoad={() => setFotoLista(true)}
+              className={`max-h-40 w-full object-cover ${fotoLista ? '' : 'hidden'}`}
+            />
+            <span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-md bg-brand-ink/80 px-2 py-1 text-xs font-medium text-brand-cream">
+              <Maximize2 className="h-3 w-3" /> Ver foto
+            </span>
+          </button>
+          {verFoto && (
+            <ImageViewer
+              url={props.situationPhotoUrl}
+              alt="Situación del vehículo"
+              onClose={() => setVerFoto(false)}
+            />
+          )}
+        </>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

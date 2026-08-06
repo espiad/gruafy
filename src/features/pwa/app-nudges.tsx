@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bell, Share, Plus, X, Download } from 'lucide-react';
+import { Bell, BellOff, Share, Plus, X, Download } from 'lucide-react';
 import { savePushSubscription } from '@/features/push/actions';
 
 type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
@@ -123,8 +123,26 @@ export function AppNudges() {
   }
 
   if (!showNotif && !showInstall) {
-    // Si el usuario los cerró pero todavía puede activarlos, dejamos un acceso chico
-    // (no es una única chance). Si ya activó/instaló todo, no mostramos nada.
+    // Notificaciones BLOQUEADAS: el navegador ya no vuelve a preguntar, así que hay
+    // que explicar cómo desbloquearlas a mano (si no, el usuario nunca entiende por
+    // qué no le llegan avisos).
+    if (notifState === 'denied') {
+      return (
+        <details className="rounded-xl border border-border bg-card p-3">
+          <summary className="focus-ring flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-brand-green">
+            <BellOff className="h-3.5 w-3.5" /> Tenés las notificaciones bloqueadas
+          </summary>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Las bloqueaste en este navegador y por eso no te avisamos cuando una grúa acepta o entra un
+            pedido. Para reactivarlas: tocá el <strong>candado 🔒</strong> (o el ícono de ajustes) al lado
+            de la dirección web, buscá <strong>Notificaciones</strong> y ponelas en <strong>Permitir</strong>.
+            Después recargá la página.
+          </p>
+        </details>
+      );
+    }
+    // Si los cerró pero todavía puede activarlos, dejamos un acceso chico (no es una
+    // única chance). Si ya activó e instaló todo, no mostramos nada.
     const canReopen = (notifState === 'default' && notifDismissed) || (!standalone && installDismissed && (deferred !== null || isIOS()));
     if (!canReopen) return null;
     return (

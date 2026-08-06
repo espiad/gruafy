@@ -99,7 +99,12 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
       {ACTIVE_TRACK.includes(state) && <LocationSender orderId={order.id} intervalMs={7000} />}
 
       {/* LA acción de este paso: un solo botón grande. */}
-      <ServiceActionsPanel orderId={order.id} state={state} />
+      <ServiceActionsPanel
+        orderId={order.id}
+        state={state}
+        origen={order.origin_lat != null && order.origin_lng != null ? { lat: order.origin_lat, lng: order.origin_lng } : null}
+        destino={order.dest_lat != null && order.dest_lng != null ? { lat: order.dest_lat, lng: order.dest_lng } : null}
+      />
 
       {/* Liquidación: total a cobrarle al cliente (saldo + adicionales aprobados). */}
       {paid && pricing?.saldo_estimado_gruero != null && (
