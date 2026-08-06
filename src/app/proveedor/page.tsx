@@ -7,6 +7,7 @@ import { OfferCard } from '@/features/providers/offer-card';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { NewOfferAlert } from '@/features/orders/live-alert';
 import { HowTo } from '@/features/onboarding/how-to';
+import { ComplianceBanner } from '@/features/providers/compliance-banner';
 import { AppNudges } from '@/features/pwa/app-nudges';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { formatARS } from '@/lib/format';
@@ -94,11 +95,12 @@ export default async function ProveedorPanel() {
     }
   }
 
-  // Conductores con estado de completitud: solo los completos pueden tomar auxilios.
-  const { getDriversWithStatus } = await import('@/features/providers/drivers');
-  const allDrivers = await getDriversWithStatus(supabase, provider.id);
-  const drivers = allDrivers.filter((d) => d.complete).map((d) => ({ id: d.id, full_name: d.full_name, role: d.role }));
-  const hasCompleteDriver = drivers.length > 0;
+  // Estado documental: no bloquea el servicio, pero se avisa con plazo y detalle.
+  const { getCompliance } = await import('@/features/providers/drivers');
+  const { getPlatformSettings } = await import('@/features/pricing/settings');
+  const ajustes = await getPlatformSettings();
+  const compliance = await getCompliance(supabase, provider.id, ajustes.dias_gracia_documentacion, provider.created_at);
+  const drivers = compliance.drivers.map((d) => ({ id: d.id, full_name: d.full_name, role: d.role }));
 
   return (
     <div className="space-y-8">
@@ -117,19 +119,7 @@ export default async function ProveedorPanel() {
         <AvailabilityToggle initial={provider.is_available} />
       </div>
 
-      {!hasCompleteDriver && (
-        <div className="rounded-2xl border-2 border-warning/50 bg-warning/10 p-4">
-          <p className="font-semibold">Ya casi terminás tu configuración</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Para recibir y tomar auxilios necesitás al menos un conductor completo: nombre, DNI,
-            teléfono, <strong>licencia</strong> y <strong>foto</strong>. Quien no los tenga cargados no
-            podrá ser seleccionado.
-          </p>
-          <Link href="/proveedor/equipo" className="focus-ring mt-3 inline-flex rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-brand-cream">
-            Ir a Conductores
-          </Link>
-        </div>
-      )}
+      <ComplianceBanner compliance={compliance} />
 
       {active ? (
         // Con un servicio en curso, el foco es ese: nada de pedidos nuevos.

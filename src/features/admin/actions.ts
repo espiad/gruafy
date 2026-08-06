@@ -113,6 +113,22 @@ export async function decideProvider(input: z.infer<typeof decisionSchema>): Pro
       .update({ review_status: 'approved' })
       .eq('provider_id', parsed.data.providerId)
       .eq('review_status', 'pending');
+    // Plazo de gracia para completar DNI/licencia/foto de los conductores. No
+    // bloquea el servicio: dispara el aviso con cuenta regresiva en el panel del
+    // gruero, y vencido queda a criterio del admin suspender la cuenta.
+    const { getPlatformSettings } = await import('@/features/pricing/settings');
+    const cfg = await getPlatformSettings();
+    const limite = new Date(Date.now() + (cfg.dias_gracia_documentacion ?? 7) * 86400000).toISOString();
+    await supabase.from('provider_documents').delete().eq('provider_id', parsed.data.providerId).eq('doc_type', 'plazo_conductores');
+    await supabase.from('provider_documents').insert({
+      provider_id: parsed.data.providerId,
+      owner_kind: 'provider',
+      doc_type: 'plazo_conductores',
+      storage_path: '(plazo de documentación de conductores)',
+      expires_at: limite,
+      review_status: 'approved',
+    });
+
     // Fecha de vencimiento de documentación (opcional): la guardamos como un
     // "documento" especial con expires_at. Al vencer, se bloquea la operación.
     await supabase.from('provider_documents').delete().eq('provider_id', parsed.data.providerId).eq('doc_type', 'vencimiento_docs');

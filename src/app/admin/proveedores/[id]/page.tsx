@@ -24,6 +24,11 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
     supabase.from('provider_documents').select('*').eq('provider_id', id).order('created_at', { ascending: true }),
   ]);
 
+  const { getCompliance } = await import('@/features/providers/drivers');
+  const { getPlatformSettings } = await import('@/features/pricing/settings');
+  const ajustes = await getPlatformSettings();
+  const compliance = await getCompliance(supabase, provider.id, ajustes.dias_gracia_documentacion, provider.created_at);
+
   // Email de login del dueño (para que el admin lo pueda corregir).
   let loginEmail: string | null = null;
   if (provider.owner_id) {
@@ -64,6 +69,28 @@ export default async function AdminProveedorDetalle({ params }: { params: Promis
             Promedio {provider.rating_avg.toFixed(1)}★ sobre {provider.rating_count} reseñas. Revisá los
             comentarios más abajo y evaluá suspender la cuenta si corresponde.
           </p>
+        </div>
+      )}
+
+      {/* Estado documental de los conductores: el admin ve si están en plazo o
+          vencidos, para decidir si suspende la cuenta. */}
+      {!compliance.alDia && (
+        <div className={`rounded-2xl border-2 p-4 ${compliance.vencido ? 'border-destructive bg-destructive/5' : 'border-warning bg-warning/10'}`}>
+          <p className={`font-semibold ${compliance.vencido ? 'text-destructive' : ''}`}>
+            {compliance.vencido ? 'Documentación de conductores VENCIDA' : 'Documentación de conductores incompleta'}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {compliance.diasRestantes !== null && !compliance.vencido
+              ? `Le quedan ${compliance.diasRestantes} día(s) de plazo.`
+              : compliance.vencido
+                ? 'Se cumplió el plazo. Podés suspender la cuenta hasta que regularice.'
+                : 'Sin plazo definido.'}
+          </p>
+          <ul className="mt-2 space-y-0.5 text-sm">
+            {compliance.incompletos.map((d) => (
+              <li key={d.id}>· <strong>{d.full_name || 'Sin nombre'}</strong> — falta {d.missing.join(', ')}</li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -10,6 +10,7 @@ import { OrderAutoRefresh, OrderRealtime } from '@/features/orders/order-live';
 import { StatusHero } from '@/features/orders/status-hero';
 import { FocusDetails } from '@/components/ui/focus-details';
 import { SettlementCard, type SettlementExtra } from '@/features/orders/settlement-card';
+import { ComplianceBanner } from '@/features/providers/compliance-banner';
 import { SupportButton } from '@/features/support/support-button';
 import { EmergencyButton } from '@/features/support/emergency-button';
 import { getPlatformSettings } from '@/features/pricing/settings';
@@ -53,6 +54,16 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
     .eq('order_id', id)
     .order('created_at', { ascending: false });
 
+  // Recordatorio de documentación pendiente, también durante el servicio.
+  let compliance = null;
+  if (order.provider_id) {
+    const { data: prov } = await supabase.from('provider_accounts').select('id, created_at').eq('id', order.provider_id).maybeSingle();
+    if (prov) {
+      const { getCompliance } = await import('@/features/providers/drivers');
+      compliance = await getCompliance(supabase, prov.id, settings.dias_gracia_documentacion, prov.created_at);
+    }
+  }
+
   const pricing = order.pricing as { saldo_estimado_gruero?: number } | null;
   const clientPhone = digits(client?.phone);
 
@@ -73,6 +84,8 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
         </Link>
         <StatusBadge state={state} />
       </div>
+
+      {compliance && <ComplianceBanner compliance={compliance} compact />}
 
       {/* FOCO: el estado actual, grande. */}
       <StatusHero state={state} role="gruero" />

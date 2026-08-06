@@ -27,6 +27,8 @@ export interface PlatformValues extends PricingSettings {
   extras_categorias: string[];
   extra_tope_auto: number;
   adicionales: AdicionalDef[];
+  /** Días de gracia para completar DNI, licencia y foto de los conductores. */
+  dias_gracia_documentacion: number;
 }
 
 export const DEFAULT_PLATFORM: PlatformValues = {
@@ -47,6 +49,7 @@ export const DEFAULT_PLATFORM: PlatformValues = {
     'acceso_especial',
   ],
   extra_tope_auto: 60000,
+  dias_gracia_documentacion: 7,
   // Catálogo de adicionales (anti-fraude). El gruero solo puede cargar de acá y
   // dentro de los límites. El admin lo edita desde Configuración.
   adicionales: [

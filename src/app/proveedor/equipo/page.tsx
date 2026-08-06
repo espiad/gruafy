@@ -6,6 +6,7 @@ import { getProfile } from '@/lib/auth/session';
 import { AddDriverForm } from '@/features/providers/add-driver-form';
 import { DriverLicenseUpload } from '@/features/providers/driver-license-upload';
 import { DriverPhotoUpload } from '@/features/providers/driver-photo-upload';
+import { ComplianceBanner } from '@/features/providers/compliance-banner';
 
 export const metadata: Metadata = { title: 'Conductores' };
 
@@ -16,7 +17,7 @@ export default async function EquipoPage() {
   const supabase = await createClient();
   const { data: provider } = await supabase
     .from('provider_accounts')
-    .select('id, status')
+    .select('id, status, created_at')
     .eq('owner_id', profile!.id)
     .maybeSingle();
   if (!provider) redirect('/proveedor/onboarding');
@@ -46,6 +47,11 @@ export default async function EquipoPage() {
     }
   }
 
+  const { getCompliance } = await import('@/features/providers/drivers');
+  const { getPlatformSettings } = await import('@/features/pricing/settings');
+  const ajustes = await getPlatformSettings();
+  const compliance = await getCompliance(supabase, provider.id, ajustes.dias_gracia_documentacion, provider.created_at);
+
   const drivers = (members ?? []).filter((m) => m.role === 'driver').length;
   const canAdd = provider.status === 'approved' && drivers < 4;
 
@@ -57,9 +63,12 @@ export default async function EquipoPage() {
       </div>
       <p className="text-sm text-muted-foreground">
         Hay un <strong>conductor dueño</strong> (base) y podés sumar hasta <strong>4 más</strong> (5 en
-        total). <strong>Solo los conductores con nombre, DNI, teléfono, licencia y foto</strong> pueden
-        ser seleccionados para tomar un auxilio. Los que estén incompletos no aparecen como opción.
+        total). Para cada uno pedimos <strong>nombre, teléfono, DNI, licencia y foto</strong>: es lo que
+        le permite al cliente saber quién lo va a asistir. Podés operar mientras completás los datos,
+        pero es obligatorio hacerlo dentro del plazo.
       </p>
+
+      <ComplianceBanner compliance={compliance} />
 
       <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
         {(members ?? []).map((m) => (

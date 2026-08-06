@@ -10,6 +10,60 @@ export interface DriverStatus {
   missing: string[];
 }
 
+export interface Compliance {
+  drivers: DriverStatus[];
+  /** Conductores a los que les falta algo (DNI, licencia o foto). */
+  incompletos: DriverStatus[];
+  alDia: boolean;
+  /** Fecha límite para regularizar. null si no se pudo determinar. */
+  deadline: Date | null;
+  diasRestantes: number | null;
+  vencido: boolean;
+}
+
+/** Clave del "documento" interno donde guardamos la fecha límite del proveedor. */
+export const PLAZO_DOC_TYPE = 'plazo_conductores';
+
+/**
+ * Estado de cumplimiento documental de un proveedor: qué le falta a cada conductor
+ * y cuánto tiempo le queda para regularizar. El plazo se guarda como un registro
+ * interno en `provider_documents` (doc_type = plazo_conductores) al aprobar la
+ * cuenta; si no existe, se estima desde el alta.
+ */
+export async function getCompliance(
+  supabase: SupabaseClient<Database>,
+  providerId: string,
+  diasGracia: number,
+  createdAt?: string | null,
+): Promise<Compliance> {
+  const drivers = await getDriversWithStatus(supabase, providerId);
+  const incompletos = drivers.filter((d) => !d.complete);
+
+  const { data: plazo } = await supabase
+    .from('provider_documents')
+    .select('expires_at')
+    .eq('provider_id', providerId)
+    .eq('doc_type', PLAZO_DOC_TYPE)
+    .maybeSingle();
+
+  let deadline: Date | null = null;
+  if (plazo?.expires_at) deadline = new Date(plazo.expires_at);
+  else if (createdAt) deadline = new Date(new Date(createdAt).getTime() + diasGracia * 86400000);
+
+  const diasRestantes = deadline
+    ? Math.ceil((deadline.getTime() - Date.now()) / 86400000)
+    : null;
+
+  return {
+    drivers,
+    incompletos,
+    alDia: incompletos.length === 0,
+    deadline,
+    diasRestantes,
+    vencido: diasRestantes !== null && diasRestantes < 0,
+  };
+}
+
 /**
  * Estado de completitud de cada conductor de un proveedor. Un conductor es
  * "seleccionable" para tomar un auxilio solo si tiene nombre, DNI, teléfono,

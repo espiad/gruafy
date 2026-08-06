@@ -43,15 +43,20 @@ export async function setAvailability(available: boolean, lat?: number, lng?: nu
       return { ok: false, error: 'Tu documentación venció. Renovala y escribinos a soporte para reactivarte.' };
     }
   }
-  // No se puede estar disponible sin al menos un conductor COMPLETO (nombre, DNI,
-  // teléfono, licencia y foto). Sin eso, nadie puede tomar un auxilio.
+  // Mínimo indispensable para operar: al menos un conductor activo con nombre y
+  // teléfono (así el cliente sabe quién va y puede contactarlo). El resto —DNI,
+  // licencia y foto— se reclama con un plazo de gracia y un aviso permanente, sin
+  // bloquear el servicio (ver getCompliance).
   if (available) {
-    const { getDriversWithStatus } = await import('./drivers');
-    const drivers = await getDriversWithStatus(supabase, provider.id);
-    if (!drivers.some((d) => d.complete)) {
+    const { data: activos } = await supabase
+      .from('provider_members')
+      .select('id, full_name, phone')
+      .eq('provider_id', provider.id)
+      .eq('status', 'active');
+    if (!(activos ?? []).some((m) => m.full_name && m.phone)) {
       return {
         ok: false,
-        error: 'Necesitás al menos un conductor con nombre, DNI, teléfono, licencia y foto para ponerte disponible. Completalo en Conductores.',
+        error: 'Necesitás al menos un conductor con nombre y teléfono para ponerte disponible. Cargalo en Conductores.',
       };
     }
   }
@@ -93,21 +98,21 @@ export async function acceptOffer(orderId: string, driverId?: string): Promise<R
   const provider = await providerOf(user.id);
   if (!provider) return { ok: false, error: 'Sin proveedor' };
 
-  // El conductor que toma el auxilio tiene que estar COMPLETO (nombre, DNI,
-  // teléfono, licencia y foto). Si no eligen, tomamos el primero completo.
+  // El conductor tiene que ser un miembro activo de ESTE proveedor. No exigimos la
+  // documentación completa para no frenar el servicio: eso se reclama con plazo y
+  // aviso permanente. Si no eligen, tomamos el primero (priorizando los completos).
   const { getDriversWithStatus } = await import('./drivers');
   const drivers = await getDriversWithStatus(supabase, provider.id);
-  const completos = drivers.filter((d) => d.complete);
-  if (completos.length === 0) {
-    return { ok: false, error: 'No tenés ningún conductor completo (nombre, DNI, teléfono, licencia y foto).' };
+  if (drivers.length === 0) {
+    return { ok: false, error: 'No tenés conductores cargados. Agregá uno en Conductores.' };
   }
   let chosenDriver = driverId;
   if (chosenDriver) {
-    if (!completos.some((d) => d.id === chosenDriver)) {
-      return { ok: false, error: 'Ese conductor no está completo (le falta licencia, foto u otro dato).' };
+    if (!drivers.some((d) => d.id === chosenDriver)) {
+      return { ok: false, error: 'El conductor elegido no es de tu equipo' };
     }
   } else {
-    chosenDriver = completos[0]!.id;
+    chosenDriver = (drivers.find((d) => d.complete) ?? drivers[0]!).id;
   }
 
   // La ventana de pago sale de la configuración de la plataforma (no del default
