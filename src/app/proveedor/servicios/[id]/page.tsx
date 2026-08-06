@@ -65,7 +65,7 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       {!isTerminal(state) && <OrderRealtime orderId={order.id} />}
-      {!isTerminal(state) && <OrderAutoRefresh active intervalMs={8000} />}
+      {!isTerminal(state) && <OrderAutoRefresh active intervalMs={4000} />}
 
       <div className="flex items-center justify-between">
         <Link href="/proveedor" className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground">

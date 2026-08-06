@@ -202,7 +202,7 @@ export default async function SolicitudDetalle({
 
       {/* Actualiza la vista sola en todo estado activo (búsqueda → pago → tracking → cierre). */}
       {!isTerminal(state) && <OrderRealtime orderId={order.id} />}
-      <OrderAutoRefresh active={!isTerminal(state)} intervalMs={8000} />
+      <OrderAutoRefresh active={!isTerminal(state)} intervalMs={4000} />
       {/* Aviso perceptible (beep + vibración + título) al cambiar a un estado clave. */}
       <StateAlert state={state} />
 

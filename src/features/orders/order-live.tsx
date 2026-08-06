@@ -25,7 +25,8 @@ export function OrderAutoRefresh({ active, intervalMs = 4000 }: { active: boolea
  * Actualización en tiempo real de una orden: se suscribe a los cambios de la fila
  * (Supabase Realtime) y refresca al instante, sin depender del polling. Requiere
  * que `service_orders` esté en la publicación de realtime; si no lo está, no pasa
- * nada (el OrderAutoRefresh sigue de respaldo). Silencioso.
+ * nada: el OrderAutoRefresh (4s) es el que GARANTIZA la actualización. Realtime es
+ * un extra que la hace instantánea, nunca la única vía. Silencioso.
  */
 export function OrderRealtime({ orderId }: { orderId: string }) {
   const router = useRouter();
