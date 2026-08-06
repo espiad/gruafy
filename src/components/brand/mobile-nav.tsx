@@ -47,10 +47,12 @@ export function MobileNav({ items }: { items: Item[] }) {
     const hash = href.slice(i);
     setOpen(false);
     document.body.style.overflow = ''; // liberamos el scroll ANTES de mover la página
-    requestAnimationFrame(() => {
+    // setTimeout y no requestAnimationFrame: rAF no se dispara si la pestaña no
+    // está visible, y el scroll quedaría sin hacerse.
+    setTimeout(() => {
       document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       history.replaceState(null, '', hash);
-    });
+    }, 10);
   }
 
   // El panel se monta en <body> con un portal. Si quedara dentro del header, el
