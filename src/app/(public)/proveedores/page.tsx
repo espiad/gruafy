@@ -13,7 +13,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { GruafyMark } from '@/components/brand/logo';
 import { FallbackImage } from '@/components/brand/fallback-image';
-import { createClient } from '@/lib/supabase/server';
 import { EarningsSimulator } from '@/features/pricing/earnings-simulator';
 import { getPublicPlatformSettings, toPricingSettings } from '@/features/pricing/settings';
 import { ProductPeek, Testimonials, ProviderSocialProof } from '@/components/landing/landing-sections';
@@ -47,15 +46,25 @@ const STEPS = [
 ];
 
 export default async function ProveedoresLanding() {
-  // Prueba social real: grúas aprobadas (sin exponer datos personales).
+  // Prueba social real: nombres de las grúas aprobadas. Va con service role porque
+  // la RLS de provider_accounts no deja leer a un visitante sin sesión (y esta es
+  // una página pública). Solo se expone la razón social, que es dato comercial.
   const settings = await getPublicPlatformSettings();
-  const supabase = await createClient();
-  const { data: approved, count } = await supabase
-    .from('provider_accounts')
-    .select('legal_name', { count: 'exact' })
-    .eq('status', 'approved')
-    .is('deleted_at', null)
-    .limit(12);
+  let approved: { legal_name: string }[] = [];
+  let count = 0;
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const { data, count: c } = await createAdminClient()
+      .from('provider_accounts')
+      .select('legal_name', { count: 'exact' })
+      .eq('status', 'approved')
+      .is('deleted_at', null)
+      .limit(12);
+    approved = data ?? [];
+    count = c ?? 0;
+  } catch {
+    /* sin service role: la sección simplemente no se muestra */
+  }
 
   return (
     <>
