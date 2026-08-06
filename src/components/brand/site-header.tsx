@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Logo } from '@/components/brand/logo';
 import { Button } from '@/components/ui/button';
 import { MobileNav } from '@/components/brand/mobile-nav';
+import { getProfile, homeForRole } from '@/lib/auth/session';
 
 const NAV = [
   { href: '/#como-funciona', label: 'Cómo funciona' },
@@ -10,7 +11,12 @@ const NAV = [
   { href: '/proveedores', label: 'Sumá tu grúa' },
 ];
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  // Las páginas públicas (ayuda, legales, simulador) también las visita gente con
+  // sesión abierta. Sin esto el header mostraba "Ingresar / Registrate" y parecía
+  // que te había deslogueado, sin forma de volver a la app.
+  const profile = await getProfile().catch(() => null);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-brand-cream/85 backdrop-blur supports-[backdrop-filter]:bg-brand-cream/70">
       <div className="container flex h-16 items-center justify-between gap-2">
@@ -32,13 +38,21 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-1 sm:gap-2">
-          {/* Cuenta: siempre visible y a mano, dentro y fuera del menú. */}
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/ingresar">Ingresar</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/registro">Registrate</Link>
-          </Button>
+          {profile ? (
+            // Con sesión abierta: la vuelta a la app, no un login que confunde.
+            <Button asChild size="sm">
+              <Link href={homeForRole(profile.role)}>Ir a mi panel</Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/ingresar">Ingresar</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/registro">Registrate</Link>
+              </Button>
+            </>
+          )}
           {/* Navegación de la landing: en mobile se pliega en la hamburguesa. */}
           <MobileNav items={NAV} />
         </div>

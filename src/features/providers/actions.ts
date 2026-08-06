@@ -320,7 +320,12 @@ export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Resu
     }
   }
 
-  const status = amount > settings.extra_tope_auto ? 'needs_review' : 'auto_approved';
+  // Si el monto salió de algo que YA definió el admin (precio fijo o dentro de un
+  // rango permitido), se aprueba solo: no tiene sentido mandar a revisión algo que
+  // la propia plataforma autorizó. Solo el modo 'libre' —donde el gruero escribe
+  // lo que quiere— queda sujeto al tope de auto-aprobación.
+  const status =
+    def.mode === 'libre' && amount > settings.extra_tope_auto ? 'needs_review' : 'auto_approved';
   const { error } = await supabase.from('service_extras').insert({
     order_id: parsed.data.orderId,
     category: def.label, // guardamos la etiqueta legible para mostrar en la liquidación
@@ -532,6 +537,65 @@ export async function editTruck(input: z.infer<typeof editTruckSchema>): Promise
   if (error) return { ok: false, error: 'No pudimos guardar la grúa' };
   if (!updated || updated.length === 0) return { ok: false, error: 'Grúa no encontrada' };
   revalidatePath('/proveedor/perfil');
+  return { ok: true };
+}
+
+/**
+ * Elimina un conductor del equipo. Nunca al conductor dueño (es el titular de la
+ * cuenta) ni a uno que esté asignado a un servicio en curso. Sus documentos se
+ * borran con él.
+ */
+export async function deleteDriver(memberId: string): Promise<Result> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const provider = await providerOf(user.id);
+  if (!provider) return { ok: false, error: 'Sin proveedor' };
+
+  const { data: member } = await supabase
+    .from('provider_members')
+    .select('id, role, full_name')
+    .eq('id', memberId)
+    .eq('provider_id', provider.id)
+    .maybeSingle();
+  if (!member) return { ok: false, error: 'Conductor no encontrado' };
+  if (member.role === 'owner') {
+    return { ok: false, error: 'No se puede eliminar al conductor dueño de la cuenta.' };
+  }
+
+  // No borrar a alguien que está manejando un servicio activo.
+  const ACTIVOS: import('@/types/database').OrderStateDb[] = [
+    'awaiting_payment', 'payment_pending', 'paid', 'provider_en_route',
+    'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending',
+  ];
+  const { data: enCurso } = await supabase
+    .from('service_orders')
+    .select('id')
+    .eq('driver_id', memberId)
+    .in('state', ACTIVOS)
+    .limit(1);
+  if (enCurso && enCurso.length > 0) {
+    return { ok: false, error: 'Ese conductor tiene un servicio en curso. Cerralo antes de eliminarlo.' };
+  }
+
+  // Documentos del conductor (licencia y foto) primero.
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const { data: docs } = await admin
+    .from('provider_documents')
+    .select('id, storage_path')
+    .eq('member_id', memberId);
+  const paths = (docs ?? []).map((d) => d.storage_path).filter((p) => p && !p.startsWith('('));
+  if (paths.length) await admin.storage.from('documents').remove(paths);
+  await admin.from('provider_documents').delete().eq('member_id', memberId);
+
+  const { error } = await admin.from('provider_members').delete().eq('id', memberId);
+  if (error) return { ok: false, error: 'No pudimos eliminar el conductor' };
+
+  revalidatePath('/proveedor/equipo');
+  revalidatePath('/proveedor');
   return { ok: true };
 }
 

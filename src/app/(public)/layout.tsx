@@ -1,7 +1,7 @@
 import { SiteHeader } from '@/components/brand/site-header';
 import { SiteFooter } from '@/components/brand/site-footer';
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />

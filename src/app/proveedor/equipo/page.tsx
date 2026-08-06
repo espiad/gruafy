@@ -8,6 +8,7 @@ import { AddDriverForm } from '@/features/providers/add-driver-form';
 import { DriverLicenseUpload } from '@/features/providers/driver-license-upload';
 import { DriverPhotoUpload } from '@/features/providers/driver-photo-upload';
 import { ComplianceBanner } from '@/features/providers/compliance-banner';
+import { DeleteDriverButton } from '@/features/providers/delete-driver-button';
 
 export const metadata: Metadata = { title: 'Conductores' };
 
@@ -96,6 +97,8 @@ export default async function EquipoPage() {
                 existing={licenseByMember.get(m.id) ?? null}
               />
               <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">{ROLE_LABEL[m.role]}</span>
+              {/* Al dueño no se lo puede eliminar: es el titular de la cuenta. */}
+              {m.role !== 'owner' && <DeleteDriverButton memberId={m.id} name={m.full_name} />}
             </div>
           </li>
         ))}
