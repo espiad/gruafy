@@ -30,6 +30,29 @@ export function MobileNav({ items }: { items: Item[] }) {
     };
   }, [open]);
 
+  /**
+   * Al tocar un enlace de ancla de la propia landing, cerramos el panel y hacemos
+   * el scroll nosotros. Si dejáramos que lo haga el navegador, el salto ocurre
+   * mientras el body todavía tiene el scroll bloqueado (por el menú abierto) y se
+   * pierde: cambiaba la URL pero la página no se movía.
+   */
+  function irA(e: React.MouseEvent, href: string) {
+    const i = href.indexOf('#');
+    const enLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+    if (i < 0 || !enLanding) {
+      setOpen(false);
+      return;
+    }
+    e.preventDefault();
+    const hash = href.slice(i);
+    setOpen(false);
+    document.body.style.overflow = ''; // liberamos el scroll ANTES de mover la página
+    requestAnimationFrame(() => {
+      document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', hash);
+    });
+  }
+
   // El panel se monta en <body> con un portal. Si quedara dentro del header, el
   // `backdrop-blur` de la barra crea un contenedor para `position: fixed` y el
   // panel se recorta a la altura del header (64px) en vez de ocupar la pantalla.
@@ -54,7 +77,7 @@ export function MobileNav({ items }: { items: Item[] }) {
             <li key={item.href}>
               <Link
                 href={item.href}
-                onClick={() => setOpen(false)}
+                onClick={(e) => irA(e, item.href)}
                 className="focus-ring block rounded-lg px-3 py-3 text-base font-medium text-brand-green hover:bg-brand-orange/10"
               >
                 {item.label}
