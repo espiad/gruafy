@@ -80,10 +80,14 @@ export function AuthForm({ mode, provider = false }: { mode: Mode; provider?: bo
     }
     const supabase = createClient();
     const target = provider ? '/proveedor/onboarding' : next || '/cliente';
+    // Google no transmite el rol pretendido (a diferencia del alta por email, que lo
+    // manda en la metadata). Sin este marcador, un gruero que entra con Google queda
+    // como cliente y /proveedor lo rebota a registro: loop infinito.
+    const rol = provider ? '&rol=proveedor' : '';
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(target)}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(target)}${rol}` },
     });
     // Si no hubo error, el navegador ya está redirigiendo a Google.
     if (error) {
