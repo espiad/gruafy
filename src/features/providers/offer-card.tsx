@@ -28,6 +28,8 @@ interface Props {
   amountProvider: number | null;
   drivers: Driver[];
   situationPhotoUrl?: string | null;
+  /** Comentario opcional que dejó el cliente al pedir (subsuelo, portón angosto…). */
+  notes?: string | null;
 }
 
 /**
@@ -146,6 +148,13 @@ export function OfferCard(props: Props) {
         {props.wheelsBlocked > 0 && <span>· {props.wheelsBlocked} rueda(s) sin girar</span>}
         {props.wheelsUnsure && <span>· estado de ruedas a confirmar</span>}
       </div>
+
+      {/* Comentario del cliente: lo que dejó escrito al pedir. Útil para decidir. */}
+      {props.notes && (
+        <p className="mt-2 rounded-lg bg-muted/60 p-2.5 text-xs text-foreground">
+          <span className="font-medium">Nota del cliente:</span> {props.notes}
+        </p>
+      )}
 
       {/* Selector de conductor (si hay más de uno) */}
       {props.drivers.length > 1 && (

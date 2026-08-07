@@ -25,7 +25,6 @@ export function SubmitReviewButton({ disabled }: { disabled: boolean }) {
       <Button onClick={submit} disabled={pending || disabled} size="lg" className="w-full">
         {pending && <Loader2 className="h-4 w-4 animate-spin" />} Enviar a revisión
       </Button>
-      {disabled && <p className="text-center text-xs text-muted-foreground">Subí al menos un documento para enviar.</p>}
       {error && <p className="text-center text-sm text-destructive">{error}</p>}
     </div>
   );

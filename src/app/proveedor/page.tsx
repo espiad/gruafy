@@ -163,6 +163,7 @@ export default async function ProveedorPanel() {
                   wheelsBlocked={order.wheels_blocked}
                   wheelsUnsure={Boolean((order.conditions as { wheels_unsure?: boolean } | null)?.wheels_unsure)}
                   vehicleType={(order.conditions as { vehicle_type?: 'auto' | 'moto' } | null)?.vehicle_type}
+                  notes={(order.conditions as { notes?: string } | null)?.notes ?? null}
                   vehicle={order.vehicle_id ? offerVehicles[order.vehicle_id] ?? null : null}
                   amountProvider={
                     (order.pricing as { saldo_estimado_gruero?: number } | null)?.saldo_estimado_gruero ?? null

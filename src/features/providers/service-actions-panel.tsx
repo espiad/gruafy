@@ -124,9 +124,7 @@ export function ServiceActionsPanel({
       return (
         <div className="rounded-2xl border-2 border-success bg-success/5 p-5 text-center">
           <p className="font-display text-lg text-success">¡Servicio finalizado!</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Cobrale el saldo al cliente si todavía no lo hiciste. Ya podés tomar otro viaje.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Ya podés tomar otro viaje.</p>
           <Link
             href="/proveedor"
             className="focus-ring mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream"

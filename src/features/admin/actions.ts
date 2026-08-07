@@ -188,6 +188,7 @@ const settingsSchema = z
     max_pasajeros: z.number().int().min(0).max(6).optional(),
     dias_gracia_documentacion: z.number().int().min(1).max(90).optional(),
     permitir_pago_simulado: z.boolean().optional(),
+    radio_busqueda_activo: z.boolean().optional(),
   })
   // El formulario manda solo lo que edita; el resto del JSON (catálogo de
   // adicionales, etc.) se preserva por el merge de abajo.

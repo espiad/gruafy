@@ -100,7 +100,7 @@ export function DocumentsManager({
       <h2 className="font-semibold">Documentación</h2>
       <p className="text-sm text-muted-foreground">
         Podés subir una <strong>foto</strong> (sacada con el celu), un papel escaneado o un <strong>PDF</strong> — lo
-        que tengas más a mano. Las fotos se comprimen solas. Un administrador revisa cada documento.
+        que tengas más a mano.
       </p>
       {busy && (
         <p className="flex items-center gap-2 rounded-md bg-brand-orange/10 p-3 text-sm font-medium text-brand-green">

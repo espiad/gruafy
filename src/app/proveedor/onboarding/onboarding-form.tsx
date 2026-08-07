@@ -192,8 +192,8 @@ export function OnboardingForm({
             <h2 className="font-semibold">Conductor</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Quién va a manejar esta grúa. Una vez aprobada la cuenta, vas a poder sumar hasta 4
-            conductores más desde <strong>Conductores</strong>.
+            Quién va a manejar esta grúa. Ahora sumás <strong>uno</strong>; cuando te aprueben, podés
+            agregar hasta 4 más desde <strong>Conductores</strong>.
           </p>
 
           <label className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-sm">
@@ -203,7 +203,7 @@ export function OnboardingForm({
               onChange={(e) => toggleSoyConductor(e.target.checked)}
               className="h-5 w-5 shrink-0 accent-brand-orange"
             />
-            <span>El conductor de esta grúa <strong>soy yo</strong></span>
+            <span>Uno de los conductores de la grúa <strong>seré yo</strong></span>
           </label>
 
           <div className="space-y-1.5">
@@ -217,9 +217,6 @@ export function OnboardingForm({
               disabled={soyElConductor}
               className={soyElConductor ? 'bg-muted text-muted-foreground' : undefined}
             />
-            {soyElConductor && (
-              <p className="text-xs text-muted-foreground">Tomado de tu cuenta. Destildá &ldquo;soy yo&rdquo; si maneja otra persona.</p>
-            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">

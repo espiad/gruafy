@@ -115,10 +115,7 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
           auto-aprobar. El caso raro se acuerda con soporte y lo carga un admin. */}
       {publicEnv.whatsapp && (
         <div className="rounded-lg border border-dashed border-border p-3">
-          <p className="text-xs text-muted-foreground">
-            ¿Necesitás cobrar algo que no está en la lista? Lo coordinamos con vos y con el cliente, y
-            lo cargamos nosotros al servicio.
-          </p>
+          <p className="text-xs text-muted-foreground">¿Necesitás cobrar algo que no está en la lista?</p>
           <a
             href={`https://wa.me/${publicEnv.whatsapp}?text=${encodeURIComponent(
               `Hola, necesito cargar un adicional que no está en la lista. Servicio ${orderId.slice(0, 8)}.`,

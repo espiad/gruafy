@@ -569,11 +569,12 @@ export default async function SolicitudDetalle({
           )}
         </div>
 
-        {pricing && (
+        {/* Al terminar, el desglose bueno (itemizado, con cada adicional) ya está en
+            "Detalle de lo que pagaste". Mostrar acá otro más pobre generaba dos
+            desgloses que no coincidían en el detalle. Solo se muestra antes de cerrar. */}
+        {pricing && !esCompletado && (
           <div>
             <p className="mb-2 text-sm font-medium">Desglose del presupuesto</p>
-            {/* Con los adicionales: sin esto, esta misma pantalla mostraba dos
-                "Total del servicio" distintos (acá sin extras, arriba con ellos). */}
             <QuoteBreakdownCard
               quote={pricing}
               extrasTotal={extras.filter((e) => e.status !== 'rejected').reduce((a, e) => a + e.amount, 0)}

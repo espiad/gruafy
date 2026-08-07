@@ -18,15 +18,16 @@ export async function dispatchOrder(orderId: string, exclude: string[] = []): Pr
 
   const { data: order } = await admin
     .from('service_orders')
-    .select('id, state, offer_deadline')
+    .select('id, state, offer_deadline, origin_lat, origin_lng')
     .eq('id', orderId)
     .single();
   if (!order || order.state !== 'searching_provider') return { offers: 0 };
 
-  // Todos los proveedores aprobados y disponibles (sin filtro de distancia).
+  // Grúas aprobadas y disponibles. Traemos su última ubicación por si el radio
+  // está activo.
   const { data: allProviders } = await admin
     .from('provider_accounts')
-    .select('id, owner_id')
+    .select('id, owner_id, last_lat, last_lng')
     .eq('status', 'approved')
     .eq('is_available', true)
     .is('deleted_at', null);
@@ -35,6 +36,24 @@ export async function dispatchOrder(orderId: string, exclude: string[] = []): Pr
   // queda ninguno, ofrecemos a todos igual (mejor que dejarlo sin grúa).
   let providers = (allProviders ?? []).filter((p) => !exclude.includes(p.id));
   if (providers.length === 0) providers = allProviders ?? [];
+
+  // Filtro por radio, solo si el admin lo activó. Red de seguridad: si al filtrar
+  // por distancia no queda ninguna grúa (todas lejos o sin ubicación cargada),
+  // ofrecemos a todas igual — mejor eso que dejar al cliente sin grúa.
+  if (settings.radio_busqueda_activo && order.origin_lat != null && order.origin_lng != null) {
+    const { haversineMeters } = await import('@/lib/geo/distance');
+    const radioM = (settings.radio_busqueda_km ?? 25) * 1000;
+    const cerca = providers.filter(
+      (p) =>
+        p.last_lat != null &&
+        p.last_lng != null &&
+        haversineMeters(
+          { lat: order.origin_lat as number, lng: order.origin_lng as number },
+          { lat: p.last_lat, lng: p.last_lng },
+        ) <= radioM,
+    );
+    if (cerca.length > 0) providers = cerca;
+  }
 
   if (!providers || providers.length === 0) {
     // Nadie disponible: no se cobra y se informa. Verificamos que el estado haya

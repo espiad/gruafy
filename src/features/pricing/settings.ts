@@ -35,6 +35,12 @@ export interface PlatformValues extends PricingSettings {
    * saca de la UI Y bloquea la acción en el servidor.
    */
   permitir_pago_simulado: boolean;
+  /**
+   * Si está activo, el despacho solo ofrece el pedido a las grúas dentro del
+   * `radio_busqueda_km`. Apagado (default), ofrece a todas las disponibles sin
+   * importar la distancia — más efectivo mientras hay pocas grúas en la red.
+   */
+  radio_busqueda_activo: boolean;
 }
 
 export const DEFAULT_PLATFORM: PlatformValues = {
@@ -57,6 +63,7 @@ export const DEFAULT_PLATFORM: PlatformValues = {
   extra_tope_auto: 60000,
   dias_gracia_documentacion: 7,
   permitir_pago_simulado: true,
+  radio_busqueda_activo: false,
   // Catálogo de adicionales (anti-fraude). El gruero SOLO puede cargar de acá y
   // dentro de los límites, y todo lo que pasa esas validaciones se aprueba en el
   // acto. A propósito no hay modo 'libre': un monto sin tope no se puede

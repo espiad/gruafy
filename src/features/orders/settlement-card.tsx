@@ -61,10 +61,11 @@ export function SettlementCard({
         <span className="font-semibold">Total al gruero</span>
         <span className="font-display text-2xl text-brand-green">{formatARS(totalGruero)}</span>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        En efectivo o transferencia, directo al gruero.
-        {anticipo != null && ` El anticipo de ${formatARS(anticipo)} ya lo pagaste por Mercado Pago.`}
-      </p>
+      {anticipo != null && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          El anticipo de {formatARS(anticipo)} ya lo pagaste por Mercado Pago.
+        </p>
+      )}
 
 
       {role === 'cliente' && anticipo != null && (

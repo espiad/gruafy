@@ -33,6 +33,13 @@ const SWITCHES: { key: keyof PlatformValues; label: string; hint: string }[] = [
       'demostraciones o si Mercado Pago se cae. Apagado, el botón desaparece y la acción queda ' +
       'bloqueada también en el servidor.',
   },
+  {
+    key: 'radio_busqueda_activo',
+    label: 'Limitar por radio de búsqueda',
+    hint:
+      'Activado, el pedido solo se ofrece a las grúas dentro del radio configurado abajo. Apagado, ' +
+      'se ofrece a todas las grúas disponibles sin importar la distancia.',
+  },
 ];
 
 export function SettingsForm({ initial }: { initial: PlatformValues }) {

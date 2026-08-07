@@ -72,7 +72,6 @@ function SoporteDesplegable({ waUrl, telUrl }: { waUrl: string; telUrl: string }
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium">Hablá con soporte</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Te escribimos con tu contexto ya cargado.</p>
         </div>
         <button
           onClick={() => setAbierto(false)}

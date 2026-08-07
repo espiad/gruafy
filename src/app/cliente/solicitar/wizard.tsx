@@ -86,6 +86,7 @@ export function SolicitarWizard({
   const [dollyHelp, setDollyHelp] = useState(false);
   const [terms, setTerms] = useState(false);
   const [declared, setDeclared] = useState(false);
+  const [notes, setNotes] = useState('');
 
   // Traduce la respuesta simple del usuario a dollys/ruedas para el presupuesto.
   function setWheels_(state: 'yes' | 'no' | 'unsure') {
@@ -180,7 +181,7 @@ export function SolicitarWizard({
         duration_seconds: Number.isFinite(secs) ? secs : 0,
         dollys,
         wheels_blocked: wheels,
-        conditions: { public_road: true, vehicle_type: vType, wheels_unsure: wheelState === 'unsure' },
+        conditions: { public_road: true, vehicle_type: vType, wheels_unsure: wheelState === 'unsure', notes: notes.trim() || undefined },
         accepted_terms: true,
       });
       if (!res.ok || !res.orderId) return setError(res.error ?? 'No pudimos crear la solicitud');
@@ -342,13 +343,25 @@ export function SolicitarWizard({
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setNv({ ...nv, has_keys: !nv.has_keys })}
-                  className={`flex w-full items-center gap-2 rounded-lg border p-3 text-sm ${nv.has_keys ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'}`}
-                >
-                  <KeyRound className="h-4 w-4" /> {nv.has_keys ? 'Tengo las llaves' : 'No tengo las llaves'}
-                </button>
+                <div>
+                  <Label className="flex items-center gap-1.5"><KeyRound className="h-4 w-4" /> Llaves del vehículo</Label>
+                  <div className="mt-1.5 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNv({ ...nv, has_keys: true })}
+                      className={`h-11 rounded-md border text-sm font-medium ${nv.has_keys ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'}`}
+                    >
+                      Tengo las llaves
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNv({ ...nv, has_keys: false })}
+                      className={`h-11 rounded-md border text-sm font-medium ${!nv.has_keys ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'}`}
+                    >
+                      No las tengo
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -357,8 +370,7 @@ export function SolicitarWizard({
             <div className="rounded-lg border border-border p-3">
               <p className="text-sm font-medium">Foto de la situación</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Sacá una foto de cómo quedó el vehículo (dónde está, si hay algo alrededor). La ve la
-                grúa antes de aceptar. Tiene que ser una foto del momento.
+                Sacá una foto de cómo quedó el vehículo (dónde está, si hay algo alrededor).
               </p>
               {photoPreview ? (
                 <div className="mt-2 space-y-2">
@@ -376,6 +388,18 @@ export function SolicitarWizard({
                   <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={photoBusy} onChange={(e) => onPhoto(e.target.files?.[0])} />
                 </label>
               )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notes">Comentario (opcional)</Label>
+              <textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value.slice(0, 500))}
+                rows={2}
+                placeholder="Algo que la grúa deba saber. Ej: está en un subsuelo, el portón es angosto…"
+                className="focus-ring w-full rounded-md border border-input bg-background p-3 text-sm"
+              />
             </div>
           </div>
         )}
