@@ -70,3 +70,35 @@ create policy extras_write on service_extras for insert
          and is_provider_member(o.provider_id)
     )
   );
+
+-- accept_offer recibía `p_provider_id` como parámetro SIN contrastarlo con quien
+-- llama. Al ser SECURITY DEFINER salta la RLS, así que cualquier usuario
+-- autenticado (un cliente, por ejemplo) podía invocarla por RPC y forzar la
+-- asignación de una grúa que nunca aceptó, expirando de paso las ofertas del resto.
+create or replace function accept_offer(p_order_id uuid, p_provider_id uuid, p_pay_seconds int default 180)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare current_state order_state;
+begin
+  -- El contexto privilegiado (service role) queda exento: no tiene auth.uid().
+  if not is_privileged_ctx() and not is_provider_member(p_provider_id) then
+    return false;
+  end if;
+
+  -- IMPRESCINDIBLE: habilita la escritura de provider_id bajo enforce_order_update().
+  perform set_config('gruafy.assigning', 'true', true);
+
+  select state into current_state from service_orders where id = p_order_id for update;
+  if current_state is null then raise exception 'Orden inexistente'; end if;
+  if current_state <> 'searching_provider' then return false; end if;
+  update provider_offers set status='accepted'
+    where order_id=p_order_id and provider_id=p_provider_id and status='pending' and expires_at > now();
+  if not found then return false; end if;
+  update provider_offers set status='expired'
+    where order_id=p_order_id and provider_id<>p_provider_id and status='pending';
+  update service_orders set provider_id=p_provider_id, state='awaiting_payment',
+      reserved_at=now(), payment_deadline=now()+make_interval(secs => p_pay_seconds)
+    where id=p_order_id;
+  insert into order_events (order_id, from_state, to_state, actor_role, event)
+    values (p_order_id, 'searching_provider', 'awaiting_payment', 'provider_owner', 'Grúa aceptó el servicio');
+  return true;
+end $$;

@@ -180,6 +180,11 @@ export default async function SolicitudDetalle({
     etaMin = Math.max(1, Math.round(meters / 1000 / 30 * 60)); // ~30 km/h
   }
 
+  // Los adicionales aprobados forman parte de lo que el cliente realmente paga:
+  // el comprobante para el seguro los omitía y subdeclaraba el reintegro.
+  const extrasAprobados = extras.filter((e) => e.status !== 'rejected').reduce((a, e) => a + e.amount, 0);
+
+
   let myReview: { rating: number; comment: string | null } | null = null;
   let vehicleLabel: string | null = null;
   if (state === 'completed') {
@@ -489,7 +494,7 @@ export default async function SolicitudDetalle({
               providerPhone={provider?.contact_phone ?? null}
               providerName={provider?.legal_name ?? null}
               amountUpfront={order.amount_upfront}
-              amountService={pricing?.saldo_estimado_gruero ?? null}
+              amountService={pricing ? pricing.saldo_estimado_gruero + extrasAprobados : null}
             />
             <InsuranceGuide
               orderId={order.id}
@@ -499,7 +504,7 @@ export default async function SolicitudDetalle({
               vehicle={vehicleLabel}
               providerName={provider?.legal_name ?? null}
               amountUpfront={order.amount_upfront}
-              amountService={pricing?.saldo_estimado_gruero ?? null}
+              amountService={pricing ? pricing.saldo_estimado_gruero + extrasAprobados : null}
             />
           </FocusDetails>
         </>

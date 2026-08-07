@@ -6,9 +6,12 @@ import { NextResponse, type NextRequest } from 'next/server';
  * depender de que el cliente tenga la pestaña abierta. Protegido por CRON_SECRET.
  */
 export async function GET(request: NextRequest) {
+  // Falla CERRADO: sin CRON_SECRET configurado, el endpoint queda deshabilitado.
+  // Antes el guard era `if (secret && ...)`, o sea que la falta de la variable lo
+  // dejaba abierto a cualquiera para expirar reservas ajenas.
   const secret = process.env.CRON_SECRET;
   const auth = request.headers.get('authorization');
-  if (secret && auth !== `Bearer ${secret}`) {
+  if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 
