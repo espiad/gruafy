@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, MapPin, ArrowRight, MessageCircle } from 'lucide-react';
+import { Loader2, MapPin, ArrowRight, MessageCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { publicEnv } from '@/lib/env';
 import { AbandonService } from './abandon-service';
@@ -55,12 +55,15 @@ export function ServiceActionsPanel({
   origen,
   destino,
   motivoCancelacion,
+  facturaUrl,
 }: {
   orderId: string;
   state: OrderState;
   origen?: { lat: number; lng: number } | null;
   destino?: { lat: number; lng: number } | null;
   motivoCancelacion?: string | null;
+  /** Link de WhatsApp al cliente con la factura (solo al finalizar). */
+  facturaUrl?: string | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -125,12 +128,24 @@ export function ServiceActionsPanel({
         <div className="rounded-2xl border-2 border-success bg-success/5 p-5 text-center">
           <p className="font-display text-lg text-success">¡Servicio finalizado!</p>
           <p className="mt-1 text-sm text-muted-foreground">Ya podés tomar otro viaje.</p>
-          <Link
-            href="/proveedor"
-            className="focus-ring mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream"
-          >
-            Buscar más viajes <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="mt-4 flex flex-col items-center gap-2">
+            {facturaUrl && (
+              <a
+                href={facturaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-5 py-3 text-sm font-semibold text-white sm:w-auto"
+              >
+                <FileText className="h-4 w-4" /> Enviarle la factura al cliente
+              </a>
+            )}
+            <Link
+              href="/proveedor"
+              className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream sm:w-auto"
+            >
+              Buscar más viajes <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       );
     }

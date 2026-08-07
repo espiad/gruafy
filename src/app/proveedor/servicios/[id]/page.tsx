@@ -37,18 +37,28 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
   const paid = PAID_STATES.includes(state);
   const settings = await getPlatformSettings();
 
-  // Datos del cliente y vehículo solo después del pago.
+  // Datos del cliente y vehículo solo después del pago. Con service role: el gruero
+  // no es dueño de esos registros (la RLS de profiles/vehicles es "solo el titular"),
+  // así que con el cliente normal venían vacíos y los botones de contacto nunca
+  // aparecían. Es simétrico a que el cliente ve el contacto del gruero al pagar.
   let client: { first_name: string | null; last_name: string | null; phone: string | null } | null = null;
   let vehicle: { brand: string; model: string; year: number | null; patente: string; color: string | null } | null = null;
+  let providerName: string | null = null;
   if (paid) {
-    const [{ data: c }, { data: v }] = await Promise.all([
-      supabase.from('profiles').select('first_name, last_name, phone').eq('id', order.client_id).single(),
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const [{ data: c }, { data: v }, { data: p }] = await Promise.all([
+      admin.from('profiles').select('first_name, last_name, phone').eq('id', order.client_id).single(),
       order.vehicle_id
-        ? supabase.from('vehicles').select('brand, model, year, patente, color').eq('id', order.vehicle_id).single()
+        ? admin.from('vehicles').select('brand, model, year, patente, color').eq('id', order.vehicle_id).single()
+        : Promise.resolve({ data: null }),
+      order.provider_id
+        ? admin.from('provider_accounts').select('legal_name').eq('id', order.provider_id).single()
         : Promise.resolve({ data: null }),
     ]);
     client = c;
     vehicle = v;
+    providerName = p?.legal_name ?? null;
   }
 
   const { data: extras } = await supabase
@@ -69,6 +79,18 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
 
   const pricing = order.pricing as { saldo_estimado_gruero?: number } | null;
   const clientPhone = digits(client?.phone);
+
+  // Factura al cliente por WhatsApp (al terminar). La foto/PDF de la factura la
+  // adjunta el gruero en el chat; acá abrimos la conversación con el mensaje y el
+  // total ya escritos. Solo si tenemos el teléfono del cliente.
+  const extrasTotal = (extras ?? []).filter((e) => e.status !== 'rejected').reduce((a, e) => a + e.amount, 0);
+  const totalGruero = (pricing?.saldo_estimado_gruero ?? 0) + extrasTotal;
+  const facturaUrl =
+    state === 'completed' && clientPhone
+      ? `https://wa.me/${clientPhone}?text=${encodeURIComponent(
+          `Hola${client?.first_name ? ' ' + client.first_name : ''}, te escribo por el servicio de grúa${providerName ? ` de ${providerName}` : ''} que hiciste con gruafy. Te adjunto la factura del servicio (total ${formatARS(totalGruero)}). ¡Gracias!`,
+        )}`
+      : null;
 
   // Navegación en Google Maps: gruero → recogida (A) → destino (B).
   const mapsUrl =
@@ -105,6 +127,7 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
         origen={order.origin_lat != null && order.origin_lng != null ? { lat: order.origin_lat, lng: order.origin_lng } : null}
         destino={order.dest_lat != null && order.dest_lng != null ? { lat: order.dest_lat, lng: order.dest_lng } : null}
         motivoCancelacion={order.cancellation_reason}
+        facturaUrl={facturaUrl}
       />
 
       {/* Liquidación: total a cobrarle al cliente (saldo + adicionales aprobados). */}
