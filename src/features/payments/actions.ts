@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { allowSimulatedPayments } from '@/lib/env';
+import { pagoSimuladoHabilitado } from '@/features/pricing/settings';
 
 const schema = z.object({ orderId: z.string().uuid() });
 
@@ -17,10 +17,10 @@ export async function simulatePayment(input: z.infer<typeof schema>) {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: 'Datos inválidos' };
 
-  // Candado: en producción no se simula, salvo que se habilite explícitamente
-  // (DEMO_PAYMENTS=true) para una demo sin mover plata real.
-  if (!allowSimulatedPayments()) {
-    return { ok: false as const, error: 'En producción el pago es real: usá Mercado Pago.' };
+  // Candado del lado del servidor: ocultar el botón no alcanza, porque una server
+  // action se puede invocar igual. Si el admin lo apagó, acá se rechaza.
+  if (!(await pagoSimuladoHabilitado())) {
+    return { ok: false as const, error: 'El pago simulado está desactivado: usá Mercado Pago.' };
   }
 
   const supabase = await createClient();

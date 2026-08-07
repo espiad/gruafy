@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/auth/session';
 import { signedDocUrl } from '@/lib/supabase/storage';
+import { STATE_LABELS, isTerminal, type OrderState } from '@/features/orders/state-machine';
 
 type Result = { ok: boolean; error?: string; value?: unknown };
 
@@ -150,7 +151,10 @@ export async function decideProvider(input: z.infer<typeof decisionSchema>): Pro
   return { ok: true };
 }
 
-const settingsSchema = z.record(z.string(), z.union([z.number(), z.array(z.number()), z.array(z.string())]));
+const settingsSchema = z.record(
+  z.string(),
+  z.union([z.number(), z.boolean(), z.array(z.number()), z.array(z.string())]),
+);
 
 /** Actualiza los parámetros de la plataforma (versiona y audita). Solo órdenes nuevas. */
 export async function updateSettings(values: Record<string, unknown>): Promise<Result> {
@@ -378,12 +382,34 @@ export async function refundPayment(paymentId: string, reason: string, confirm: 
     await admin.from('refunds').update({ status: processed ? 'processed' : 'failed' }).eq('id', refund.id);
   }
   await admin.from('payments').update({ status: processed ? 'refunded' : payment.status }).eq('id', paymentId);
-  await admin.from('service_orders').update({ state: processed ? 'refunded' : 'refund_pending' }).eq('id', payment.order_id);
+
+  // El estado de la orden solo se mueve si el servicio NO se prestó. Reembolsar el
+  // anticipo de un servicio ya cumplido no lo "des-completa": eso borraría que el
+  // gruero trabajó. Antes se intentaba igual y el trigger lo rechazaba en silencio.
+  const { data: ord } = await admin
+    .from('service_orders')
+    .select('state')
+    .eq('id', payment.order_id)
+    .single();
+  const estadoPrevio = ord?.state as OrderState | undefined;
+  const mueveEstado = estadoPrevio != null && estadoPrevio !== 'completed' && estadoPrevio !== 'refunded';
+  const nuevoEstado: OrderState = processed ? 'refunded' : 'refund_pending';
+  let estadoOk = true;
+  if (mueveEstado) {
+    const { data: upd } = await admin
+      .from('service_orders')
+      .update({ state: nuevoEstado })
+      .eq('id', payment.order_id)
+      .eq('state', estadoPrevio)
+      .select('id');
+    estadoOk = Boolean(upd && upd.length > 0);
+  }
   await admin.from('order_events').insert({
     order_id: payment.order_id,
-    to_state: processed ? 'refunded' : 'refund_pending',
+    from_state: estadoPrevio ?? null,
+    to_state: mueveEstado && estadoOk ? nuevoEstado : null,
     actor_role: 'admin',
-    event: processed ? 'Reembolso acreditado' : 'Reembolso en curso',
+    event: `${processed ? 'Reembolso acreditado' : 'Reembolso en curso'}: ${reason}`,
   });
   await audit('refund_payment', 'payments', paymentId, { status: payment.status }, { status: processed ? 'refunded' : 'refund_pending' });
   revalidatePath('/admin/pagos');
@@ -396,18 +422,326 @@ export async function adminCancelOrder(orderId: string, reason: string): Promise
   if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
   if (!reason.trim()) return { ok: false, error: 'El motivo es obligatorio' };
   const supabase = await createClient();
-  const { data: order } = await supabase.from('service_orders').select('id, state').eq('id', orderId).single();
+  const { data: order } = await supabase
+    .from('service_orders')
+    .select('id, state, client_id, provider_id')
+    .eq('id', orderId)
+    .single();
   if (!order) return { ok: false, error: 'Orden no encontrada' };
+  if (isTerminal(order.state as OrderState)) {
+    return { ok: false, error: `El servicio ya está cerrado (${STATE_LABELS[order.state as OrderState]}). No se puede cancelar de nuevo.` };
+  }
 
-  await supabase.from('service_orders').update({ state: 'cancelled_by_admin', cancellation_reason: reason }).eq('id', orderId);
-  await supabase.from('order_events').insert({
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+
+  // CRÍTICO: hay que CONFIRMAR que la fila cambió. El trigger de integridad rechaza
+  // transiciones no declaradas (incluso con service role) y, si no miramos el
+  // resultado, la UI dice "cancelado" mientras el servicio sigue vivo para el gruero.
+  const { data: updated, error: updErr } = await admin
+    .from('service_orders')
+    .update({ state: 'cancelled_by_admin', cancellation_reason: reason })
+    .eq('id', orderId)
+    .eq('state', order.state) // no pisar un cambio de estado concurrente
+    .select('id');
+  if (updErr || !updated || updated.length === 0) {
+    return {
+      ok: false,
+      error: `No se pudo cancelar desde "${STATE_LABELS[order.state as OrderState]}". ${updErr?.message ?? 'El estado cambió mientras cancelabas: recargá y probá de nuevo.'}`,
+    };
+  }
+
+  await admin.from('order_events').insert({
     order_id: orderId,
     from_state: order.state,
     to_state: 'cancelled_by_admin',
     actor_role: 'admin',
-    event: 'Cancelada por administración',
+    event: `Cancelada por administración: ${reason}`,
   });
-  await audit('cancel_order', 'service_orders', orderId, { state: order.state }, { state: 'cancelled_by_admin' });
+
+  // Avisar a las dos puntas. Si el servicio estaba en curso hay plata de por medio,
+  // así que el motivo tiene que llegarles, no quedar solo en el panel del admin.
+  const destinatarios: { user_id: string; link: string }[] = [];
+  if (order.client_id) destinatarios.push({ user_id: order.client_id, link: `/cliente/solicitudes/${orderId}` });
+  if (order.provider_id) {
+    const { data: owner } = await admin
+      .from('provider_members')
+      .select('user_id')
+      .eq('provider_id', order.provider_id)
+      .eq('role', 'owner')
+      .maybeSingle();
+    if (owner?.user_id) destinatarios.push({ user_id: owner.user_id, link: `/proveedor/servicios/${orderId}` });
+  }
+  if (destinatarios.length > 0) {
+    await admin.from('notifications').insert(
+      destinatarios.map((d) => ({
+        user_id: d.user_id,
+        type: 'order_cancelled',
+        title: 'Servicio cancelado por gruafy',
+        body: reason,
+        link: d.link,
+      })),
+    );
+  }
+
+  await audit('cancel_order', 'service_orders', orderId, { state: order.state }, { state: 'cancelled_by_admin', reason });
   revalidatePath('/admin/servicios');
+  revalidatePath(`/admin/servicios/${orderId}`);
+  revalidatePath(`/cliente/solicitudes/${orderId}`);
+  revalidatePath(`/proveedor/servicios/${orderId}`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Adicionales cargados por administración
+// ---------------------------------------------------------------------------
+
+const adminExtraSchema = z.object({
+  orderId: z.string().uuid(),
+  label: z.string().trim().min(3, 'Poné un nombre para el adicional').max(60),
+  reason: z.string().trim().min(3, 'Explicá el motivo').max(200),
+  amount: z.number().int().positive('El monto tiene que ser mayor a cero').max(5_000_000),
+});
+
+/**
+ * Carga un adicional PERSONALIZADO a un servicio en curso. El gruero solo puede
+ * usar el catálogo cerrado (anti-fraude); cualquier caso raro se resuelve por
+ * soporte y lo carga un admin acá, quedando visible para las dos partes.
+ */
+export async function adminAddExtra(input: z.infer<typeof adminExtraSchema>): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = adminExtraSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const { orderId, label, reason, amount } = parsed.data;
+
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from('service_orders')
+    .select('id, state, client_id, provider_id')
+    .eq('id', orderId)
+    .single();
+  if (!order) return { ok: false, error: 'Orden no encontrada' };
+
+  const ABIERTOS: OrderState[] = [
+    'paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending',
+  ];
+  if (!ABIERTOS.includes(order.state as OrderState)) {
+    return { ok: false, error: `El servicio está ${STATE_LABELS[order.state as OrderState]}: solo se cargan adicionales mientras está en curso.` };
+  }
+
+  const { error } = await admin.from('service_extras').insert({
+    order_id: orderId,
+    // El prefijo deja claro de dónde salió, para que ni el cliente ni el gruero
+    // crean que el otro lo inventó.
+    category: `${label} (cargado por gruafy)`,
+    reason,
+    amount,
+    status: 'auto_approved',
+  });
+  if (error) return { ok: false, error: 'No pudimos cargar el adicional' };
+
+  const destinatarios: { user_id: string; link: string }[] = [];
+  if (order.client_id) destinatarios.push({ user_id: order.client_id, link: `/cliente/solicitudes/${orderId}` });
+  if (order.provider_id) {
+    const { data: owner } = await admin
+      .from('provider_members')
+      .select('user_id')
+      .eq('provider_id', order.provider_id)
+      .eq('role', 'owner')
+      .maybeSingle();
+    if (owner?.user_id) destinatarios.push({ user_id: owner.user_id, link: `/proveedor/servicios/${orderId}` });
+  }
+  if (destinatarios.length > 0) {
+    await admin.from('notifications').insert(
+      destinatarios.map((d) => ({
+        user_id: d.user_id,
+        type: 'extra_added',
+        title: 'Se agregó un adicional al servicio',
+        body: `${label}: ${reason}`,
+        link: d.link,
+      })),
+    );
+  }
+
+  await audit('add_extra', 'service_extras', orderId, null, { label, amount, reason });
+  revalidatePath(`/admin/servicios/${orderId}`);
+  revalidatePath(`/cliente/solicitudes/${orderId}`);
+  revalidatePath(`/proveedor/servicios/${orderId}`);
+  return { ok: true };
+}
+
+/** Quita un adicional cargado por error (del gruero o del propio admin). */
+export async function adminRemoveExtra(extraId: string, orderId: string): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+  const { data: gone, error } = await admin
+    .from('service_extras')
+    .delete()
+    .eq('id', extraId)
+    .select('id');
+  if (error || !gone || gone.length === 0) return { ok: false, error: 'No pudimos quitarlo' };
+  await audit('remove_extra', 'service_extras', extraId, { orderId }, null);
+  revalidatePath(`/admin/servicios/${orderId}`);
+  revalidatePath(`/cliente/solicitudes/${orderId}`);
+  revalidatePath(`/proveedor/servicios/${orderId}`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Gestión de usuarios y administradores
+// ---------------------------------------------------------------------------
+
+/**
+ * Cuenta de administración que NO se puede degradar por ningún medio. Es el
+ * cierre anti-lockout: sin esto, un admin podría quitarse el rol a sí mismo (o
+ * quitárselo al dueño) y dejar la plataforma sin nadie que la administre.
+ */
+const ADMIN_PROTEGIDO = 'juanpedimeolaa@gmail.com';
+
+export interface UsuarioAdminRow {
+  id: string;
+  email: string;
+  role: string;
+  first_name: string | null;
+  last_name: string | null;
+  protegido: boolean;
+}
+
+/** Lista de usuarios con su mail (el mail vive en auth, no en profiles). */
+export async function listUsers(query = ''): Promise<UsuarioAdminRow[]> {
+  if (!(await ensureAdmin())) return [];
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+
+  const { data: authList } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const emails = new Map((authList?.users ?? []).map((u) => [u.id, u.email ?? '']));
+  const { data: profiles } = await admin
+    .from('profiles')
+    .select('id, role, first_name, last_name')
+    .order('created_at', { ascending: false });
+
+  const q = query.trim().toLowerCase();
+  return (profiles ?? [])
+    .map((p) => {
+      const email = emails.get(p.id) ?? '';
+      return {
+        id: p.id,
+        email,
+        role: p.role as string,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        protegido: email.toLowerCase() === ADMIN_PROTEGIDO,
+      };
+    })
+    .filter((u) =>
+      !q ||
+      u.email.toLowerCase().includes(q) ||
+      `${u.first_name ?? ''} ${u.last_name ?? ''}`.toLowerCase().includes(q),
+    );
+}
+
+const roleSchema = z.object({
+  userId: z.string().uuid(),
+  role: z.enum(['client', 'provider_owner', 'admin']),
+});
+
+/**
+ * Cambia el rol de un usuario. Pasar a `provider_owner` habilita el alta de
+ * proveedor; volver a `client` NO borra la cuenta de proveedor, solo le saca el
+ * acceso al panel (para poder revertirlo sin perder datos).
+ */
+export async function setUserRole(input: z.infer<typeof roleSchema>): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = roleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
+  const { userId, role } = parsed.data;
+
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+
+  const { data: target } = await admin.auth.admin.getUserById(userId);
+  const email = (target?.user?.email ?? '').toLowerCase();
+  const { data: prev } = await admin.from('profiles').select('role').eq('id', userId).single();
+  if (!prev) return { ok: false, error: 'Usuario no encontrado' };
+
+  // El dueño de la plataforma no puede perder el admin (ni por error propio).
+  if (email === ADMIN_PROTEGIDO && role !== 'admin') {
+    return { ok: false, error: 'Esta cuenta es la administración principal: no se le puede quitar el rol.' };
+  }
+  // Si alguien deja de ser proveedor, no puede quedar con servicios en curso.
+  if (prev.role === 'provider_owner' && role !== 'provider_owner') {
+    const { data: cuenta } = await admin
+      .from('provider_accounts')
+      .select('id')
+      .eq('owner_id', userId)
+      .maybeSingle();
+    if (cuenta) {
+      const { count } = await admin
+        .from('service_orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('provider_id', cuenta.id)
+        .in('state', ['paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending']);
+      if ((count ?? 0) > 0) {
+        return { ok: false, error: `Tiene ${count} servicio(s) en curso: cerralos o cancelalos antes de cambiarle el rol.` };
+      }
+      // Se baja de la calle para no seguir recibiendo ofertas.
+      await admin.from('provider_accounts').update({ is_available: false }).eq('id', cuenta.id);
+    }
+  }
+
+  const { data: upd, error } = await admin
+    .from('profiles')
+    .update({ role })
+    .eq('id', userId)
+    .select('id');
+  if (error || !upd || upd.length === 0) return { ok: false, error: 'No pudimos cambiar el rol' };
+
+  await audit('set_user_role', 'profiles', userId, { role: prev.role }, { role });
+  revalidatePath('/admin/usuarios');
+  return { ok: true };
+}
+
+const nuevoAdminSchema = z.object({
+  email: z.string().trim().email('Mail inválido'),
+  password: z.string().min(8, 'La contraseña necesita al menos 8 caracteres'),
+  firstName: z.string().trim().max(60).optional(),
+  lastName: z.string().trim().max(60).optional(),
+});
+
+/**
+ * Alta de un administrador nuevo con mail y contraseña. Queda con el mail
+ * confirmado para que pueda entrar en el acto (lo crea un admin, no hay que
+ * verificar que el mail exista). Tiene exactamente los mismos permisos.
+ */
+export async function createAdminUser(input: z.infer<typeof nuevoAdminSchema>): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = nuevoAdminSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const { email, password, firstName, lastName } = parsed.data;
+
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+
+  const { data: created, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { first_name: firstName ?? '', last_name: lastName ?? '' },
+  });
+  if (error || !created?.user) {
+    const ya = (error?.message ?? '').toLowerCase().includes('already');
+    return { ok: false, error: ya ? 'Ya existe un usuario con ese mail. Cambiale el rol desde la lista.' : (error?.message ?? 'No pudimos crear el usuario') };
+  }
+
+  // El trigger de alta crea el profile con rol 'client': lo promovemos a admin.
+  const { error: rolErr } = await admin
+    .from('profiles')
+    .upsert({ id: created.user.id, role: 'admin', first_name: firstName ?? null, last_name: lastName ?? null });
+  if (rolErr) return { ok: false, error: 'Se creó el usuario pero no pudimos darle el rol admin.' };
+
+  await audit('create_admin', 'profiles', created.user.id, null, { email });
+  revalidatePath('/admin/usuarios');
   return { ok: true };
 }

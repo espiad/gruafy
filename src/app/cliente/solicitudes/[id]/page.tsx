@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { PayButton } from '@/features/payments/pay-button';
 import { SimulatePaymentButton } from '@/features/payments/simulate-payment-button';
-import { serverEnv, allowSimulatedPayments } from '@/lib/env';
+import { serverEnv } from '@/lib/env';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map-lazy';
 import { ReviewForm } from '@/features/reviews/review-form';
@@ -75,10 +75,12 @@ export default async function SolicitudDetalle({
   const pricing = order.pricing as unknown as QuoteBreakdown | null;
   const revealed = REVEAL_STATES.includes(state);
   const mpConfigured = Boolean(serverEnv.mp().accessToken);
-  const puedeSimular = allowSimulatedPayments();
 
   const { getPlatformSettings } = await import('@/features/pricing/settings');
-  const maxPasajeros = (await getPlatformSettings()).max_pasajeros;
+  const settings = await getPlatformSettings();
+  const maxPasajeros = settings.max_pasajeros;
+  const puedeSimular = settings.permitir_pago_simulado !== false;
+  const ventanaPagoSeg = settings.pago_cliente_segundos;
 
   const TRACK_STATES: OrderState[] = ['provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit'];
   const showMap = TRACK_STATES.includes(state);
@@ -272,7 +274,7 @@ export default async function SolicitudDetalle({
             Pagá el anticipo para confirmar la reserva. El resto se lo abonás al gruero al finalizar.
           </p>
           <div className="mt-4 space-y-3">
-            <PaymentCountdown deadline={order.payment_deadline} />
+            <PaymentCountdown deadline={order.payment_deadline} windowSeconds={ventanaPagoSeg} />
             {mpConfigured ? (
               <>
                 <PayButton orderId={order.id} amount={order.amount_upfront} />

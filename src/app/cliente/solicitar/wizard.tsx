@@ -120,6 +120,11 @@ export function SolicitarWizard({
       if (geo && !(routedMeters && routedMeters > 0)) {
         return 'Esperá a que calculemos la ruta, o revisá las direcciones.';
       }
+      // El estado de las ruedas define si hace falta dolly, y el dolly cambia el
+      // precio. Sin responder, el presupuesto sale mal y el gruero llega sin el
+      // equipo que necesita.
+      if (!wheelState) return 'Decinos si las ruedas del vehículo giran';
+      if (wheelState === 'no' && wheels < 1) return 'Elegí cuántas ruedas no giran';
     }
     return null;
   }

@@ -7,6 +7,7 @@ const NAV: NavItem[] = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard', exact: true },
   { href: '/admin/proveedores', label: 'Proveedores', icon: 'shield' },
   { href: '/admin/servicios', label: 'Servicios', icon: 'truck' },
+  { href: '/admin/usuarios', label: 'Usuarios', icon: 'users' },
   { href: '/admin/pagos', label: 'Pagos', icon: 'card' },
   { href: '/admin/reembolsos', label: 'Reembolsos', icon: 'refund' },
   { href: '/admin/configuracion', label: 'Configuración', icon: 'settings' },

@@ -23,22 +23,38 @@ const FIELDS: { key: keyof PlatformValues; label: string; hint?: string; percent
   { key: 'extra_tope_auto', label: 'Tope auto-aprobación de adicionales (ARS)' },
 ];
 
+/** Interruptores (booleanos). Van aparte de los campos numéricos. */
+const SWITCHES: { key: keyof PlatformValues; label: string; hint: string }[] = [
+  {
+    key: 'permitir_pago_simulado',
+    label: 'Permitir pago simulado',
+    hint:
+      'Agrega un botón "Simular pago y continuar" en la pantalla de pago del cliente. Sirve para ' +
+      'demostraciones o si Mercado Pago se cae. Apagado, el botón desaparece y la acción queda ' +
+      'bloqueada también en el servidor.',
+  },
+];
+
 export function SettingsForm({ initial }: { initial: PlatformValues }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [switches, setSwitches] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(SWITCHES.map((s) => [s.key as string, initial[s.key] !== false])),
+  );
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaved(false);
     setError(null);
     const f = new FormData(e.currentTarget);
-    const values: Record<string, number | string[]> = { ...initial } as never;
+    const values: Record<string, number | boolean | string[]> = { ...initial } as never;
     for (const field of FIELDS) {
       const raw = Number(f.get(field.key));
       values[field.key as string] = field.percent ? raw / 100 : raw;
     }
+    for (const s of SWITCHES) values[s.key as string] = switches[s.key as string] ?? false;
     values['extras_categorias'] = initial.extras_categorias;
     values['km_redondeo'] = initial.km_redondeo;
     values['max_pasajeros'] = initial.max_pasajeros;
@@ -67,6 +83,33 @@ export function SettingsForm({ initial }: { initial: PlatformValues }) {
           </div>
         ))}
       </div>
+
+      <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
+        {SWITCHES.map((s) => {
+          const on = switches[s.key as string] ?? false;
+          return (
+            <div key={String(s.key)} className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{s.label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{s.hint}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={on}
+                aria-label={s.label}
+                onClick={() => setSwitches((prev) => ({ ...prev, [s.key as string]: !on }))}
+                className={`focus-ring relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? 'bg-brand-green' : 'bg-input'}`}
+              >
+                <span
+                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-6' : 'left-1'}`}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>

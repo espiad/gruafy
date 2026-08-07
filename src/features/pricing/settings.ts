@@ -29,6 +29,12 @@ export interface PlatformValues extends PricingSettings {
   adicionales: AdicionalDef[];
   /** Días de gracia para completar DNI, licencia y foto de los conductores. */
   dias_gracia_documentacion: number;
+  /**
+   * Muestra (y habilita) el botón de "simular pago" en la pantalla de pago del
+   * cliente. Sirve para demos y para operar si Mercado Pago se cae. Apagarlo lo
+   * saca de la UI Y bloquea la acción en el servidor.
+   */
+  permitir_pago_simulado: boolean;
 }
 
 export const DEFAULT_PLATFORM: PlatformValues = {
@@ -50,14 +56,17 @@ export const DEFAULT_PLATFORM: PlatformValues = {
   ],
   extra_tope_auto: 60000,
   dias_gracia_documentacion: 7,
-  // Catálogo de adicionales (anti-fraude). El gruero solo puede cargar de acá y
-  // dentro de los límites. El admin lo edita desde Configuración.
+  permitir_pago_simulado: true,
+  // Catálogo de adicionales (anti-fraude). El gruero SOLO puede cargar de acá y
+  // dentro de los límites, y todo lo que pasa esas validaciones se aprueba en el
+  // acto. A propósito no hay modo 'libre': un monto sin tope no se puede
+  // auto-aprobar sin abrir la puerta al fraude, y dejarlo "en revisión" trababa la
+  // liquidación. Los casos raros los carga un admin desde el panel del servicio.
   adicionales: [
     { key: 'peaje', label: 'Peaje', mode: 'rango', min: 1000, max: 20000, max_cantidad: 5, activo: true },
     { key: 'espera', label: 'Espera (por hora)', mode: 'rango', min: 5000, max: 30000, max_cantidad: 6, activo: true },
     { key: 'zanja', label: 'Sacar de zanja / cuneta', mode: 'rango', min: 20000, max: 150000, max_cantidad: 1, activo: true },
     { key: 'acceso', label: 'Acceso especial (cochera, subsuelo)', mode: 'rango', min: 5000, max: 80000, max_cantidad: 1, activo: true },
-    { key: 'otro', label: 'Otro (a convenir con el cliente)', mode: 'libre', max_cantidad: 3, activo: true },
   ],
 };
 
@@ -92,6 +101,17 @@ export async function getPublicPlatformSettings(): Promise<PlatformValues> {
     /* sin service role: usamos defaults */
   }
   return DEFAULT_PLATFORM;
+}
+
+/**
+ * ¿Está habilitado el pago simulado? Lo decide el admin desde Configuración, no
+ * una variable de entorno: así se puede apagar en el momento (por ejemplo, antes
+ * de una demostración) sin tocar el deploy. Se consulta tanto para mostrar el
+ * botón como para autorizar la acción en el servidor.
+ */
+export async function pagoSimuladoHabilitado(): Promise<boolean> {
+  const s = await getPlatformSettings();
+  return s.permitir_pago_simulado !== false;
 }
 
 /** Extrae solo los campos de precio para el motor de `quote`. */

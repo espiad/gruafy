@@ -37,15 +37,23 @@ export async function dispatchOrder(orderId: string, exclude: string[] = []): Pr
   if (providers.length === 0) providers = allProviders ?? [];
 
   if (!providers || providers.length === 0) {
-    // Nadie disponible: no se cobra y se informa.
-    await admin.from('service_orders').update({ state: 'no_provider' }).eq('id', orderId);
-    await admin.from('order_events').insert({
-      order_id: orderId,
-      from_state: 'searching_provider',
-      to_state: 'no_provider',
-      actor_role: null,
-      event: 'Sin grúas disponibles',
-    });
+    // Nadie disponible: no se cobra y se informa. Verificamos que el estado haya
+    // cambiado de verdad; si no, la orden se quedaría "buscando" para siempre.
+    const { data: cerrada } = await admin
+      .from('service_orders')
+      .update({ state: 'no_provider' })
+      .eq('id', orderId)
+      .eq('state', 'searching_provider')
+      .select('id');
+    if (cerrada && cerrada.length > 0) {
+      await admin.from('order_events').insert({
+        order_id: orderId,
+        from_state: 'searching_provider',
+        to_state: 'no_provider',
+        actor_role: null,
+        event: 'Sin grúas disponibles',
+      });
+    }
     return { offers: 0 };
   }
 

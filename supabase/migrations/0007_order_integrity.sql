@@ -55,8 +55,20 @@ on conflict do nothing;
 insert into order_transitions (from_state, to_state)
 select s, 'cancelled_by_admin'::order_state from unnest(array[
   'searching_provider','provider_reserved','awaiting_payment','payment_pending',
-  'paid','provider_en_route','provider_arrived','vehicle_loaded','in_transit'
+  'paid','provider_en_route','provider_arrived','vehicle_loaded','in_transit',
+  -- Faltaba: el gruero ya entregó y falta solo el cierre. Sin esta fila el trigger
+  -- rechazaba la cancelación y el admin creía haberla cancelado.
+  'completion_pending'
 ]::order_state[]) as s
+on conflict do nothing;
+
+-- Reembolsos posteriores a una cancelación: si el servicio se cortó con plata de
+-- por medio, el admin tiene que poder devolverla y que el estado lo refleje.
+insert into order_transitions (from_state, to_state)
+select s, t from unnest(array[
+  'cancelled_by_admin','cancelled_by_client','cancelled_by_provider'
+]::order_state[]) as s
+cross join unnest(array['refund_pending','refunded']::order_state[]) as t
 on conflict do nothing;
 
 -- ¿El contexto es privilegiado? (service role, o conexión sin usuario: cron/migración)

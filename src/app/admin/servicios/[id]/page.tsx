@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { AdminCancelOrder } from '@/features/admin/admin-cancel-order';
+import { OrderExtrasManager } from '@/features/admin/order-extras-manager';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { formatDateTime } from '@/lib/format';
 import { STATE_LABELS, isTerminal, type OrderState } from '@/features/orders/state-machine';
@@ -18,11 +19,39 @@ export default async function AdminServicioDetalle({ params }: { params: Promise
   const [{ data: events }, { data: payments }, { data: extras }] = await Promise.all([
     supabase.from('order_events').select('*').eq('order_id', id).order('created_at', { ascending: false }),
     supabase.from('payments').select('*').eq('order_id', id).order('created_at', { ascending: false }),
-    supabase.from('service_extras').select('*').eq('order_id', id),
+    supabase.from('service_extras').select('*').eq('order_id', id).order('created_at'),
   ]);
 
   const state = order.state as OrderState;
   const pricing = order.pricing as unknown as QuoteBreakdown | null;
+
+  // Contactos de las dos puntas. Cuando un servicio se corta con plata de por
+  // medio hay que poder hablar con ambos ya mismo, no ir a buscar el teléfono.
+  const [{ data: cliente }, { data: proveedor }] = await Promise.all([
+    order.client_id
+      ? supabase.from('profiles').select('first_name, last_name, phone').eq('id', order.client_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    order.provider_id
+      ? supabase.from('provider_accounts').select('legal_name, contact_phone').eq('id', order.provider_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const contactos = [
+    {
+      rol: 'Cliente',
+      nombre: [cliente?.first_name, cliente?.last_name].filter(Boolean).join(' ') || 'Sin nombre',
+      phone: cliente?.phone ?? null,
+    },
+    {
+      rol: 'Grúa',
+      nombre: proveedor?.legal_name ?? null,
+      phone: proveedor?.contact_phone ?? null,
+    },
+  ].filter((c) => c.nombre);
+
+  const ABIERTOS: OrderState[] = [
+    'paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending',
+  ];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -57,12 +86,59 @@ export default async function AdminServicioDetalle({ params }: { params: Promise
         </details>
       )}
 
-      {(extras ?? []).length > 0 && (
+      <OrderExtrasManager
+        orderId={order.id}
+        editable={ABIERTOS.includes(state)}
+        extras={(extras ?? []).map((e) => ({
+          id: e.id,
+          category: e.category,
+          reason: e.reason,
+          amount: e.amount,
+        }))}
+      />
+
+      {order.cancellation_reason && (
+        <div className="rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-destructive">
+            Motivo de la cancelación
+          </p>
+          <p className="mt-1 text-base">{order.cancellation_reason}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Ya se les notificó a las dos partes con este mismo texto.
+          </p>
+        </div>
+      )}
+
+      {contactos.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="mb-2 font-semibold">Adicionales</h2>
-          {(extras ?? []).map((e) => (
-            <p key={e.id} className="text-sm">{e.category} — {e.reason} ({e.status})</p>
-          ))}
+          <h2 className="mb-1 font-semibold">Contacto de las partes</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Si el servicio se cortó con plata de por medio, acordá acá cómo se resuelve.
+          </p>
+          <div className="space-y-2">
+            {contactos.map((c) => (
+              <div key={c.rol} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/50 p-3">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">{c.rol}</p>
+                  <p className="truncate text-sm font-medium">{c.nombre}</p>
+                </div>
+                {c.phone ? (
+                  <a
+                    href={`https://wa.me/${c.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                      `Hola, te escribo de gruafy por el servicio ${order.id.slice(0, 8)}.`,
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
+                  >
+                    <MessageCircle className="h-4 w-4" /> WhatsApp
+                  </a>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sin teléfono cargado</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

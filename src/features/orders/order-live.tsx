@@ -179,7 +179,7 @@ export function CancelAwaitingPayment({ orderId }: { orderId: string }) {
     return (
       <button
         onClick={() => setConfirm(true)}
-        className="focus-ring mx-auto block rounded-md text-xs text-muted-foreground underline hover:text-destructive"
+        className="focus-ring mx-auto block rounded-md px-2 py-1 text-sm font-medium text-destructive underline underline-offset-2 hover:opacity-80"
       >
         No quiero seguir, cancelar la reserva
       </button>
@@ -201,8 +201,19 @@ export function CancelAwaitingPayment({ orderId }: { orderId: string }) {
   );
 }
 
-/** Cuenta regresiva del tiempo de pago (mm:ss) para el bloque de pago. */
-export function PaymentCountdown({ deadline }: { deadline: string | null }) {
+/**
+ * Cuenta regresiva del tiempo de pago. Es el MISMO anillo que el de la búsqueda:
+ * el número vive dentro de un círculo de tamaño fijo, así que al cambiar los
+ * dígitos no re-fluye el texto de alrededor (antes, embebido en una frase, hacía
+ * saltar el renglón en mobile a cada segundo).
+ */
+export function PaymentCountdown({
+  deadline,
+  windowSeconds = 600,
+}: {
+  deadline: string | null;
+  windowSeconds?: number;
+}) {
   const [left, setLeft] = useState<number | null>(null);
 
   useEffect(() => {
@@ -217,9 +228,39 @@ export function PaymentCountdown({ deadline }: { deadline: string | null }) {
   if (left == null) return null;
   const mm = String(Math.floor(left / 60)).padStart(2, '0');
   const ss = String(left % 60).padStart(2, '0');
+  const pct = Math.max(0, Math.min(100, (left / windowSeconds) * 100));
+  const R = 42;
+  const C = 2 * Math.PI * R;
+  // Último minuto: el anillo pasa a rojo para que se note sin leer el número.
+  const urgente = left <= 60;
+
   return (
-    <p className="text-center text-sm text-muted-foreground">
-      Tenés <strong className="tabular-nums text-brand-green">{mm}:{ss}</strong> para pagar y confirmar la reserva.
-    </p>
+    <div className="flex flex-col items-center">
+      <div className="relative h-20 w-20">
+        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+          <circle cx="50" cy="50" r={R} fill="none" stroke="currentColor" strokeWidth="8" className="text-brand-orange/20" />
+          <circle
+            cx="50"
+            cy="50"
+            r={R}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+            strokeLinecap="round"
+            className={`transition-all duration-500 ${urgente ? 'text-destructive' : 'text-brand-orange'}`}
+            strokeDasharray={C}
+            strokeDashoffset={C - (pct / 100) * C}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`font-mono text-lg font-semibold tabular-nums ${urgente ? 'text-destructive' : 'text-brand-green'}`}>
+            {mm}:{ss}
+          </span>
+        </div>
+      </div>
+      <p className="mt-1.5 text-center text-xs text-muted-foreground">
+        {left === 0 ? 'Se venció el tiempo de pago' : 'para confirmar la reserva'}
+      </p>
+    </div>
   );
 }

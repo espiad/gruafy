@@ -104,6 +104,7 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
         state={state}
         origen={order.origin_lat != null && order.origin_lng != null ? { lat: order.origin_lat, lng: order.origin_lng } : null}
         destino={order.dest_lat != null && order.dest_lng != null ? { lat: order.dest_lat, lng: order.dest_lng } : null}
+        motivoCancelacion={order.cancellation_reason}
       />
 
       {/* Liquidación: total a cobrarle al cliente (saldo + adicionales aprobados). */}
@@ -173,7 +174,7 @@ export default async function ServicioPanel({ params }: { params: Promise<{ id: 
           <div>
             <p className="mb-1 text-sm font-medium">Adicionales</p>
             <p className="text-xs text-muted-foreground">
-              Peajes, espera u otros. Llevan motivo. Sobre {formatARS(settings.extra_tope_auto)} van a revisión.
+              Peajes, espera y demás. Llevan motivo y se suman al total en el acto.
             </p>
             <ul className="mt-3 space-y-2">
               {(extras ?? []).map((e) => (

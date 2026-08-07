@@ -3,8 +3,9 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, MapPin, ArrowRight } from 'lucide-react';
+import { Loader2, MapPin, ArrowRight, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { publicEnv } from '@/lib/env';
 import { advanceOrderState } from './actions';
 import { haversineMeters } from '@/lib/geo/distance';
 import { formatDistance } from '@/lib/format';
@@ -20,25 +21,40 @@ const NEXT: Partial<Record<OrderState, { to: OrderState; label: string }>> = {
   completion_pending: { to: 'completed', label: 'Finalizar servicio' },
 };
 
-/** Punto contra el que se chequea la cercanía en cada paso, y cómo se llama. */
+/**
+ * Puntos donde se chequea la cercanía. A propósito son SOLO dos: confirmar la
+ * llegada al cliente y confirmar la entrega. Antes también se pedía al cargar el
+ * vehículo, que es el mismo lugar donde ya se verificó al llegar: verificar dos
+ * veces seguidas lo mismo era pura fricción.
+ */
 const PUNTO_ESPERADO: Partial<Record<OrderState, { campo: 'origen' | 'destino'; nombre: string }>> = {
   provider_en_route: { campo: 'origen', nombre: 'el punto de recogida' },
-  provider_arrived: { campo: 'origen', nombre: 'el punto de recogida' },
   in_transit: { campo: 'destino', nombre: 'el destino' },
 };
 
 const TOLERANCIA_M = 500;
+
+/** Estados en los que el servicio se cortó y el gruero tiene que enterarse. */
+const CANCELADOS: OrderState[] = [
+  'cancelled_by_admin',
+  'cancelled_by_client',
+  'cancelled_by_provider',
+  'refund_pending',
+  'refunded',
+];
 
 export function ServiceActionsPanel({
   orderId,
   state,
   origen,
   destino,
+  motivoCancelacion,
 }: {
   orderId: string;
   state: OrderState;
   origen?: { lat: number; lng: number } | null;
   destino?: { lat: number; lng: number } | null;
+  motivoCancelacion?: string | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -48,6 +64,44 @@ export function ServiceActionsPanel({
   const next = NEXT[state];
 
   if (!next) {
+    if (CANCELADOS.includes(state)) {
+      // El servicio se cortó desde afuera. Antes solo desaparecía el botón, así que
+      // el gruero seguía trabajando sin enterarse de que ya no había viaje.
+      return (
+        <div className="rounded-2xl border-2 border-destructive bg-destructive/5 p-5 text-center">
+          <p className="font-display text-lg text-destructive">Este servicio fue cancelado</p>
+          {motivoCancelacion ? (
+            <div className="mt-3 rounded-xl bg-card p-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Motivo</p>
+              <p className="mt-1 text-base">{motivoCancelacion}</p>
+            </div>
+          ) : null}
+          <p className="mt-3 text-sm text-muted-foreground">
+            No sigas con el traslado. Si ya habías empezado, escribinos y lo resolvemos.
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Link
+              href="/proveedor"
+              className="focus-ring inline-flex items-center gap-2 rounded-lg bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream"
+            >
+              Volver al panel <ArrowRight className="h-4 w-4" />
+            </Link>
+            {publicEnv.whatsapp && (
+              <a
+                href={`https://wa.me/${publicEnv.whatsapp}?text=${encodeURIComponent(
+                  `Hola, me cancelaron el servicio ${orderId.slice(0, 8)} y quiero consultar.`,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-5 py-3 text-sm font-semibold text-white"
+              >
+                <MessageCircle className="h-4 w-4" /> Hablar con soporte
+              </a>
+            )}
+          </div>
+        </div>
+      );
+    }
     if (state === 'completed') {
       // Cerrado el servicio, lo que quiere el gruero es volver a trabajar: le damos
       // la vuelta al panel en grande, no una pantalla muerta.
@@ -83,6 +137,11 @@ export function ServiceActionsPanel({
    * Antes de confirmar un paso que implica "estoy ahí", comparamos la ubicación real
    * con el punto esperado. NO bloquea: solo avisa, porque el GPS falla, hay
    * estacionamientos, subsuelos y direcciones mal cargadas. La decisión es del gruero.
+   *
+   * Tres desenlaces, y ninguno es silencioso: cerca → avanza solo; lejos → aviso con
+   * la distancia; no se pudo medir → lo decimos y se confirma a mano. Antes, cualquier
+   * fallo del GPS (o el timeout de 4s) caía en `avanzar()` sin decir nada, así que
+   * estando a kilómetros el paso se daba igual y parecía que el control no existía.
    */
   function intentarAvanzar() {
     const esperado = PUNTO_ESPERADO[state];
@@ -98,25 +157,37 @@ export function ServiceActionsPanel({
         else avanzar();
       },
       () => {
-        // Sin permiso de ubicación no molestamos: seguimos normal.
         setVerificando(false);
-        avanzar();
+        setLejos(-1); // -1 = no pudimos medir (permiso denegado, sin señal o timeout)
       },
-      { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 },
+      // Sin alta precisión y cacheando un minuto para que sea rápido, pero con
+      // margen real: 4s no alcanzaba en la calle y siempre caía en el timeout.
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   }
 
   const esperado = PUNTO_ESPERADO[state];
 
   if (lejos !== null) {
+    const noSePudo = lejos < 0;
     return (
       <div className="rounded-2xl border-2 border-warning bg-warning/10 p-5">
         <p className="flex items-center gap-2 font-semibold">
-          <MapPin className="h-5 w-5 text-warning-foreground" /> Parece que todavía estás lejos
+          <MapPin className="h-5 w-5 text-warning-foreground" />
+          {noSePudo ? 'No pudimos verificar tu ubicación' : 'Parece que todavía estás lejos'}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Estás a <strong>{formatDistance(lejos)}</strong> de {esperado?.nombre ?? 'el punto'}. Puede ser
-          el GPS o que la dirección esté mal cargada. ¿Confirmás igual?
+          {noSePudo ? (
+            <>
+              No conseguimos la señal del GPS (puede ser el permiso de ubicación o que estés bajo
+              techo). Confirmá vos mismo que ya estás en {esperado?.nombre ?? 'el punto'}.
+            </>
+          ) : (
+            <>
+              Estás a <strong>{formatDistance(lejos)}</strong> de {esperado?.nombre ?? 'el punto'}. Puede
+              ser el GPS o que la dirección esté mal cargada. ¿Confirmás igual?
+            </>
+          )}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button onClick={avanzar} disabled={pending}>

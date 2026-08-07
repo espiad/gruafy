@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, MessageCircle } from 'lucide-react';
+import { publicEnv } from '@/lib/env';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { addExtra } from './actions';
@@ -109,6 +110,27 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
         Agregar adicional
       </Button>
+
+      {/* Fuera del catálogo no hay carga automática: un monto sin tope no se puede
+          auto-aprobar. El caso raro se acuerda con soporte y lo carga un admin. */}
+      {publicEnv.whatsapp && (
+        <div className="rounded-lg border border-dashed border-border p-3">
+          <p className="text-xs text-muted-foreground">
+            ¿Necesitás cobrar algo que no está en la lista? Lo coordinamos con vos y con el cliente, y
+            lo cargamos nosotros al servicio.
+          </p>
+          <a
+            href={`https://wa.me/${publicEnv.whatsapp}?text=${encodeURIComponent(
+              `Hola, necesito cargar un adicional que no está en la lista. Servicio ${orderId.slice(0, 8)}.`,
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="focus-ring mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 py-2 text-sm font-semibold text-white hover:opacity-90"
+          >
+            <MessageCircle className="h-4 w-4" /> Hablar con soporte
+          </a>
+        </div>
+      )}
     </form>
   );
 }

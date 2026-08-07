@@ -54,14 +54,9 @@ export const publicEnv = {
 /** ¿Están presentes las claves de Supabase para el cliente? */
 export const hasSupabaseConfig = Boolean(publicEnv.supabaseUrl && publicEnv.supabaseKey);
 
-/**
- * Permite el "pago simulado" aunque el modo sea producción. Pensado para una demo
- * o defensa donde no se quiere (o no se puede) mover plata real. Se enciende con
- * DEMO_PAYMENTS=true y se apaga sacando la variable.
- */
-export function allowSimulatedPayments(): boolean {
-  return paymentsMode() !== 'production' || get('DEMO_PAYMENTS') === 'true';
-}
+// El "pago simulado" ya NO se controla por variable de entorno: lo enciende y
+// apaga el admin desde Configuración (`permitir_pago_simulado`), para poder
+// cambiarlo en el momento sin un redeploy. Ver `pagoSimuladoHabilitado()`.
 
 /**
  * Candado de producción: si falta configuración crítica o datos legales reales,
