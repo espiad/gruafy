@@ -184,13 +184,19 @@ export async function rejectOffer(orderId: string): Promise<Result> {
   if (!user) return { ok: false, error: 'No autenticado' };
   const provider = await providerOf(user.id);
   if (!provider) return { ok: false, error: 'Sin proveedor' };
-  await supabase
+  const { data: rechazada, error } = await supabase
     .from('provider_offers')
     .update({ status: 'rejected' })
     .eq('order_id', orderId)
     .eq('provider_id', provider.id)
-    .eq('status', 'pending');
+    .eq('status', 'pending')
+    .select('id');
   revalidatePath('/proveedor');
+  // 0 filas = la oferta ya venció o la tomó otro. No es un error del gruero, pero
+  // sí hay que decirlo: si no, la tarjeta le reaparece y cree que no se aplicó.
+  if (error || !rechazada || rechazada.length === 0) {
+    return { ok: false, error: 'Esa oferta ya no estaba disponible.' };
+  }
   return { ok: true };
 }
 

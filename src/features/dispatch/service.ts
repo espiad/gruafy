@@ -69,7 +69,26 @@ export async function dispatchOrder(orderId: string, exclude: string[] = []): Pr
     expires_at: expiresAt,
     status: 'pending' as const,
   }));
-  await admin.from('provider_offers').insert(rows);
+  // UPSERT, no INSERT. `provider_offers` tiene unique (order_id, provider_id) y
+  // `rejectAndResearch` marca las viejas como 'expired' sin borrarlas: al re-ofertar
+  // el mismo pedido, el INSERT chocaba con esas filas y —al ser un único INSERT de
+  // varias filas— fallaba ENTERO. Resultado: "Buscar otra grúa" no creaba ninguna
+  // oferta, los grueros recibían el push y su panel estaba vacío, y el cliente
+  // esperaba la ventana completa para que le dijeran que no había grúas.
+  const { data: creadas, error: errOfertas } = await admin
+    .from('provider_offers')
+    .upsert(rows, { onConflict: 'order_id,provider_id' })
+    .select('id');
+  if (errOfertas || !creadas || creadas.length === 0) {
+    // Sin ofertas no hay a quién avisarle: no mandamos push prometiendo un pedido
+    // que nadie va a poder tomar.
+    await admin.from('order_events').insert({
+      order_id: orderId,
+      actor_role: null,
+      event: `No se pudieron crear las ofertas: ${errOfertas?.message ?? 'sin filas'}`,
+    });
+    return { offers: 0 };
+  }
 
   // Notifica a todos los dueños (por usuario, no por cuenta).
   const ownerIds = providers.map((p) => p.owner_id).filter(Boolean) as string[];

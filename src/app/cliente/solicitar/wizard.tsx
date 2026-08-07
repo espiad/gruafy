@@ -497,8 +497,13 @@ export function SolicitarWizard({
         <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || pending}>
           Atrás
         </Button>
+        {/* "Continuar" queda bloqueado mientras se comprime la foto: si no, tocarlo
+            justo en ese momento te decía "sacá una foto" recién sacada. */}
         {step < STEPS.length - 1 ? (
-          <Button onClick={next} size="lg">Continuar</Button>
+          <Button onClick={next} size="lg" disabled={photoBusy}>
+            {photoBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {photoBusy ? 'Procesando foto…' : 'Continuar'}
+          </Button>
         ) : (
           <Button onClick={submit} disabled={pending} size="lg">
             {pending && <Loader2 className="h-4 w-4 animate-spin" />}

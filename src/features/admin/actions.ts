@@ -69,10 +69,16 @@ export async function reviewDocument(input: z.infer<typeof reviewDocSchema>): Pr
   const { data: doc } = await supabase.from('provider_documents').select('id, provider_id, review_status').eq('id', parsed.data.docId).single();
   if (!doc) return { ok: false, error: 'Documento no encontrado' };
 
-  await supabase
+  const { data: revisado, error: errDoc } = await supabase
     .from('provider_documents')
     .update({ review_status: parsed.data.decision, admin_note: parsed.data.note ?? null })
-    .eq('id', parsed.data.docId);
+    .eq('id', parsed.data.docId)
+    .select('id');
+  if (errDoc || !revisado || revisado.length === 0) {
+    // Si no se verifica, la auditoría registra un rechazo que en la base nunca
+    // pasó: el gruero no ve el motivo y no vuelve a subir nada.
+    return { ok: false, error: errDoc?.message ?? 'No pudimos guardar la decisión.' };
+  }
   await audit('review_document', 'provider_documents', parsed.data.docId, { review_status: doc.review_status }, { review_status: parsed.data.decision });
   revalidatePath(`/admin/proveedores/${doc.provider_id}`);
   return { ok: true };
@@ -105,7 +111,16 @@ export async function decideProvider(input: z.infer<typeof decisionSchema>): Pro
   // Si se suspende o rechaza, deja de estar disponible.
   if (parsed.data.decision !== 'approved') patch.is_available = false;
 
-  await supabase.from('provider_accounts').update(patch).eq('id', parsed.data.providerId);
+  const { data: decidido, error: errDecision } = await supabase
+    .from('provider_accounts')
+    .update(patch)
+    .eq('id', parsed.data.providerId)
+    .select('id');
+  if (errDecision || !decidido || decidido.length === 0) {
+    // La UI es optimista: mostraba "Cuenta aprobada." aunque no hubiera cambiado
+    // nada, y el gruero seguía viendo "en revisión" sin que nadie se enterara.
+    return { ok: false, error: errDecision?.message ?? 'No pudimos aplicar la decisión. Recargá y probá de nuevo.' };
+  }
 
   if (parsed.data.decision === 'approved') {
     // Al aprobar el proveedor, se aprueban TODOS sus documentos pendientes.

@@ -25,7 +25,7 @@ function copyFor(state: OrderState, role: 'cliente' | 'gruero', etaMin?: number 
     provider_arrived: { emoji: '📍', title: '¡Tu grúa llegó!', sub: 'Acercate y coordiná con el conductor.', tone: 'success' },
     vehicle_loaded: { emoji: '🔧', title: 'Cargando tu vehículo', sub: 'En instantes salen hacia el destino.', tone: 'green' },
     in_transit: { emoji: '🛣️', mark: true, title: 'En camino al destino', sub: 'Seguí el recorrido en vivo.', tone: 'success', pulse: true },
-    completion_pending: { emoji: '🏁', title: 'Llegaron al destino', sub: 'Ya casi. Podés cerrar y dejar tu reseña.', tone: 'green' },
+    completion_pending: { emoji: '🏁', title: 'Llegaron al destino', sub: 'Pagale el saldo al gruero. Apenas cierre el servicio vas a poder dejarle tu reseña.', tone: 'green' },
     completed: { emoji: '⭐', title: 'Servicio finalizado', sub: '¡Gracias por usar gruafy! Dejá tu reseña.', tone: 'green' },
   };
   const provider: Partial<Record<OrderState, Copy>> = {
