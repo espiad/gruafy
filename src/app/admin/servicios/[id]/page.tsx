@@ -49,6 +49,12 @@ export default async function AdminServicioDetalle({ params }: { params: Promise
     },
   ].filter((c) => c.nombre);
 
+  // El desglose tiene que incluir los adicionales: si no, el admin que media una
+  // disputa ve un total distinto al que ve el cliente en la liquidación.
+  const extrasTotal = (extras ?? [])
+    .filter((e) => e.status !== 'rejected')
+    .reduce((a, e) => a + e.amount, 0);
+
   const ABIERTOS: OrderState[] = [
     'paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending',
   ];
@@ -82,7 +88,9 @@ export default async function AdminServicioDetalle({ params }: { params: Promise
       {pricing && (
         <details className="rounded-2xl border border-border bg-card p-5">
           <summary className="cursor-pointer font-medium">Desglose económico</summary>
-          <div className="mt-4"><QuoteBreakdownCard quote={pricing} /></div>
+          <div className="mt-4">
+            <QuoteBreakdownCard quote={pricing} extrasTotal={extrasTotal} />
+          </div>
         </details>
       )}
 

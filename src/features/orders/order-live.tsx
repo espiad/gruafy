@@ -65,6 +65,7 @@ export function SearchingCard({
   const [left, setLeft] = useState(windowSeconds);
   const [pending, start] = useTransition();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
@@ -89,8 +90,19 @@ export function SearchingCard({
   }, [timedOut, orderId, router]);
 
   function cancel() {
+    setCancelError(null);
     start(async () => {
-      await cancelOrderByClient(orderId, 'El cliente canceló la búsqueda');
+      // Carrera real y frecuente: una grúa puede aceptar en el mismo instante en
+      // que el cliente cancela. Antes no se miraba el resultado, así que creía
+      // haber cancelado y aparecía en la pantalla de cobro sin entender por qué.
+      const res = await cancelOrderByClient(orderId, 'El cliente canceló la búsqueda');
+      if (!res.ok) {
+        setCancelError(
+          res.error === 'La solicitud ya no se puede cancelar'
+            ? 'Justo te aceptó una grúa. Mirá los datos abajo: si no querés seguir, podés soltar la reserva sin pagar.'
+            : (res.error ?? 'No pudimos cancelar'),
+        );
+      }
       router.refresh();
     });
   }
@@ -148,6 +160,9 @@ export function SearchingCard({
             <Button variant="ghost" size="sm" onClick={() => setConfirmCancel(false)}>Seguir buscando</Button>
           </div>
         </div>
+      )}
+      {cancelError && (
+        <p className="mt-3 rounded-lg bg-warning/15 p-3 text-sm text-warning-foreground">{cancelError}</p>
       )}
     </div>
   );

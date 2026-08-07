@@ -41,6 +41,11 @@ const CANCELADOS: OrderState[] = [
   'cancelled_by_provider',
   'refund_pending',
   'refunded',
+  // Faltaban: 'disputed' dejaba al gruero con la pantalla muda Y contándole como
+  // servicio activo, así que no veía ninguna oferta nueva. Y 'payment_expired' lo
+  // dejaba esperando un pago que ya se había caído.
+  'disputed',
+  'payment_expired',
 ];
 
 export function ServiceActionsPanel({
@@ -69,7 +74,15 @@ export function ServiceActionsPanel({
       // el gruero seguía trabajando sin enterarse de que ya no había viaje.
       return (
         <div className="rounded-2xl border-2 border-destructive bg-destructive/5 p-5 text-center">
-          <p className="font-display text-lg text-destructive">Este servicio fue cancelado</p>
+          <p className="font-display text-lg text-destructive">
+            {state === 'payment_expired'
+              ? 'El cliente no llegó a pagar'
+              : state === 'disputed'
+                ? 'Este servicio está en revisión'
+                : state === 'refunded' || state === 'refund_pending'
+                  ? 'Este servicio se reembolsó'
+                  : 'Este servicio fue cancelado'}
+          </p>
           {motivoCancelacion ? (
             <div className="mt-3 rounded-xl bg-card p-4 text-left">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Motivo</p>
@@ -77,7 +90,9 @@ export function ServiceActionsPanel({
             </div>
           ) : null}
           <p className="mt-3 text-sm text-muted-foreground">
-            No sigas con el traslado. Si ya habías empezado, escribinos y lo resolvemos.
+            {state === 'payment_expired'
+              ? 'Se venció la ventana de pago y la reserva se liberó. No salgas: ya podés tomar otro viaje.'
+              : 'No sigas con el traslado. Si ya habías empezado, escribinos y lo resolvemos.'}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Link

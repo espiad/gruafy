@@ -267,6 +267,29 @@ export default async function SolicitudDetalle({
         </div>
       )}
 
+      {/* Resultado que devuelve Mercado Pago al volver al navegador. Estaba
+          declarado en searchParams pero no se leía: a quien le rechazaban la
+          tarjeta le aparecía otra vez la misma pantalla de cobro, sin una sola
+          palabra de que el pago había fallado. */}
+      {sp.pago === 'error' && state === 'awaiting_payment' && (
+        <div className="rounded-2xl border-2 border-destructive bg-destructive/5 p-4">
+          <p className="font-semibold text-destructive">No se pudo completar el pago</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Mercado Pago rechazó la operación y <strong>no se te cobró nada</strong>. Probá otra vez o
+            con otro medio de pago; la reserva sigue en pie hasta que se acabe el tiempo.
+          </p>
+        </div>
+      )}
+      {sp.pago === 'pendiente' && state !== 'paid' && (
+        <div className="rounded-2xl border-2 border-warning bg-warning/10 p-4">
+          <p className="font-semibold">Tu pago quedó pendiente</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Mercado Pago todavía lo está procesando. Apenas lo confirme te avisamos y la grúa sale.
+            No hace falta que pagues de nuevo.
+          </p>
+        </div>
+      )}
+
       {state === 'awaiting_payment' && order.amount_upfront != null && (
         <div className="rounded-2xl border-2 border-brand-orange bg-brand-orange/5 p-5">
           <h2 className="font-semibold">Reservá con el anticipo</h2>
@@ -295,6 +318,44 @@ export default async function SolicitudDetalle({
         <div className="rounded-2xl border-2 border-warning/40 bg-warning/10 p-5 text-center">
           <p className="font-medium">Estamos confirmando tu pago…</p>
           <p className="text-sm text-muted-foreground">Puede tardar unos segundos. No cierres esta pantalla.</p>
+        </div>
+      )}
+
+      {/* Reembolsos y disputas. Antes estos tres estados no tenían NADA: el cliente
+          al que le devolvían la plata abría su pedido y veía una pantalla en blanco,
+          sin monto, sin explicación y sin siquiera un botón de soporte. */}
+      {(state === 'refund_pending' || state === 'refunded' || state === 'disputed') && (
+        <div className="rounded-2xl border-2 border-brand-orange bg-brand-orange/5 p-6 text-center">
+          <h2 className="font-display text-xl">
+            {state === 'refunded'
+              ? 'Te devolvimos el anticipo'
+              : state === 'refund_pending'
+                ? 'Tu devolución está en camino'
+                : 'Estamos revisando este servicio'}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {state === 'refunded'
+              ? 'La devolución ya salió de nuestro lado. Según tu banco o tarjeta puede tardar unos días hábiles en aparecerte.'
+              : state === 'refund_pending'
+                ? 'Estamos procesando la devolución del anticipo con Mercado Pago. Te avisamos cuando se acredite.'
+                : 'Hubo un reclamo sobre este servicio y lo está viendo una persona del equipo. Te contactamos apenas tengamos una respuesta.'}
+          </p>
+          {order.amount_upfront != null && state !== 'disputed' && (
+            <p className="mt-3 text-base font-semibold">
+              Importe: {formatARS(order.amount_upfront)}
+            </p>
+          )}
+          {order.cancellation_reason && (
+            <div className="mx-auto mt-4 max-w-md rounded-xl bg-card p-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Motivo</p>
+              <p className="mt-1 text-base">{order.cancellation_reason}</p>
+            </div>
+          )}
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button asChild variant="outline">
+              <Link href="/cliente">Volver al inicio</Link>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -464,7 +525,12 @@ export default async function SolicitudDetalle({
         {pricing && (
           <div>
             <p className="mb-2 text-sm font-medium">Desglose del presupuesto</p>
-            <QuoteBreakdownCard quote={pricing} />
+            {/* Con los adicionales: sin esto, esta misma pantalla mostraba dos
+                "Total del servicio" distintos (acá sin extras, arriba con ellos). */}
+            <QuoteBreakdownCard
+              quote={pricing}
+              extrasTotal={extras.filter((e) => e.status !== 'rejected').reduce((a, e) => a + e.amount, 0)}
+            />
           </div>
         )}
 

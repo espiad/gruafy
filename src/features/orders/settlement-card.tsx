@@ -12,8 +12,9 @@ export interface SettlementExtra {
 /**
  * Liquidación del servicio, estilo Uber: le dice al cliente cuánto pagarle al
  * gruero AHORA, con el desglose (saldo base + adicionales) y el TOTAL bien grande.
- * Solo suman al total los adicionales aprobados (auto_approved/approved); los que
- * están en revisión se muestran aparte y no se cobran hasta resolverse.
+ * Suman al total todos los adicionales salvo los rechazados. Ya no existe el estado
+ * "en revisión": el catálogo del admin (rangos y topes) es la única validación, y lo
+ * que pasa esas reglas se cobra. Los casos fuera de catálogo los carga un admin.
  */
 export function SettlementCard({
   saldoBase,

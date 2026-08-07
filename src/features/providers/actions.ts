@@ -281,7 +281,7 @@ const extraSchema = z.object({
  * Carga un adicional al servicio, VALIDÁNDOLO contra el catálogo configurado por
  * el admin (anti-fraude): la categoría debe existir y estar activa, el monto debe
  * respetar el modo (libre / fijo / rango) y no puede superarse el tope de cantidad
- * por categoría. Marca para revisión si supera el tope de auto-aprobación.
+ * por categoría. Todo lo que pasa esas reglas se aprueba en el acto.
  */
 export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Result> {
   const parsed = extraSchema.safeParse(input);
@@ -325,7 +325,6 @@ export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Resu
       return { ok: false, error: `El monto debe estar entre ${min} y ${max}` };
     }
   }
-  // 'libre' no valida monto (queda a criterio, con el tope de auto-aprobación).
 
   // Tope de cantidad por categoría en esta orden.
   if (def.max_cantidad != null) {
@@ -351,6 +350,37 @@ export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Resu
     status,
   });
   if (error) return { ok: false, error: 'No pudimos cargar el adicional' };
+
+  // Avisarle al cliente. El presupuesto le promete que "si hace falta algo extra,
+  // se suma al final y te lo avisa antes": hasta acá esa promesa no la cumplía
+  // nadie, el cliente se enteraba mirando el total al momento de pagar.
+  try {
+    const { data: ord } = await supabase
+      .from('service_orders')
+      .select('client_id')
+      .eq('id', parsed.data.orderId)
+      .single();
+    if (ord?.client_id) {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const { formatARS } = await import('@/lib/format');
+      await createAdminClient().from('notifications').insert({
+        user_id: ord.client_id,
+        type: 'extra_added',
+        title: `Se sumó un adicional: ${formatARS(amount)}`,
+        body: `${def.label} — ${parsed.data.reason}`,
+        link: `/cliente/solicitudes/${parsed.data.orderId}`,
+      });
+      const { sendPushToUser } = await import('@/lib/push/send');
+      await sendPushToUser(ord.client_id, {
+        title: `Adicional de ${formatARS(amount)}`,
+        body: `${def.label}: ${parsed.data.reason}`,
+        url: `/cliente/solicitudes/${parsed.data.orderId}`,
+      });
+    }
+  } catch {
+    /* el adicional ya quedó cargado: el aviso es best-effort */
+  }
+
   revalidatePath(`/proveedor/servicios/${parsed.data.orderId}`);
   revalidatePath(`/cliente/solicitudes/${parsed.data.orderId}`);
   return { ok: true };
@@ -430,7 +460,9 @@ export async function createProviderAccount(input: z.infer<typeof onboardingSche
       dni: parsed.data.driver.dni || null,
       phone: parsed.data.driver.phone || parsed.data.contact_phone,
     });
-    await admin.from('profiles').update({ role: 'provider_owner' }).eq('id', user.id);
+    // Solo promovemos desde 'client'. Un admin que recorre el alta para probarla
+    // perdía su propio rol y no podía recuperarlo sin entrar por la base.
+    await admin.from('profiles').update({ role: 'provider_owner' }).eq('id', user.id).eq('role', 'client');
   }
 
   const { error: truckErr } = await admin.from('tow_trucks').insert({
