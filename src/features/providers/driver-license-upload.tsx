@@ -51,9 +51,18 @@ export function DriverLicenseUpload({
     setBusy(true);
     try {
       const supabase = createClient();
-      const path = `${providerId}/licencia-${memberId}-${Date.now()}-${sanitizeFilename(file.name)}`;
-      const { error: upErr } = await supabase.storage.from('documents').upload(path, file, {
-        contentType: file.type,
+      // Comprimimos si es imagen (una foto de celu pesa varios MB y la subida se
+      // hace eterna). Los PDF van tal cual. Este upload era el único que subía crudo.
+      let payload: Blob = file;
+      let ext = sanitizeFilename(file.name);
+      if (file.type.startsWith('image/')) {
+        const { compressImage } = await import('@/lib/image/compress');
+        payload = await compressImage(file, 1600, 0.72);
+        ext = 'licencia.jpg';
+      }
+      const path = `${providerId}/licencia-${memberId}-${Date.now()}-${ext}`;
+      const { error: upErr } = await supabase.storage.from('documents').upload(path, payload, {
+        contentType: file.type.startsWith('image/') ? 'image/jpeg' : file.type,
         upsert: false,
       });
       if (upErr) throw new Error(upErr.message);

@@ -522,6 +522,41 @@ export async function addDriver(input: z.infer<typeof driverSchema>): Promise<Re
   return { ok: true };
 }
 
+const editDriverSchema = z.object({
+  memberId: z.string().uuid(),
+  dni: z.string().refine((v) => !v || isValidDni(v), 'DNI inválido').optional(),
+  phone: z.string().min(6, 'El teléfono es obligatorio'),
+});
+
+/**
+ * Completa/edita el DNI y el teléfono de un conductor ya cargado. Sin esto no había
+ * forma de agregar el DNI a un conductor existente (ni al dueño, cuyo DNI es opcional
+ * en el alta), así que el aviso de "falta DNI" quedaba trabado para siempre.
+ */
+export async function updateDriverData(input: z.infer<typeof editDriverSchema>): Promise<Result> {
+  const parsed = editDriverSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const provider = await providerOf(user.id);
+  if (!provider) return { ok: false, error: 'Sin proveedor' };
+
+  // El conductor tiene que ser de ESTE proveedor (el UPDATE lo filtra por provider_id).
+  const { data: upd, error } = await supabase
+    .from('provider_members')
+    .update({ dni: parsed.data.dni || null, phone: parsed.data.phone })
+    .eq('id', parsed.data.memberId)
+    .eq('provider_id', provider.id)
+    .select('id');
+  if (error || !upd || upd.length === 0) return { ok: false, error: 'No pudimos guardar los datos' };
+  revalidatePath('/proveedor/equipo');
+  revalidatePath('/proveedor');
+  return { ok: true };
+}
+
 const editCompanySchema = z.object({
   legal_name: z.string().min(2, 'Ingresá la razón social'),
   cuit: z.string().refine(isValidCuit, 'CUIT inválido'),
