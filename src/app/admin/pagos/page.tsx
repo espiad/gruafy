@@ -39,7 +39,7 @@ export default async function AdminPagos() {
                 {formatARS(p.amount)}
               </Link>
               <p className="text-xs text-muted-foreground">
-                {p.mp_payment_id ?? 'sin id MP'} · {p.live_mode ? 'producción' : 'prueba'} · {formatDateTime(p.created_at)}
+                {p.mp_payment_id ? `MP ${p.mp_payment_id} · ` : ''}{p.live_mode ? 'producción' : 'prueba'} · {formatDateTime(p.created_at)}
               </p>
             </div>
             <div className="flex items-center gap-3">

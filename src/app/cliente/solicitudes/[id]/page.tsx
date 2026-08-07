@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { PayButton } from '@/features/payments/pay-button';
 import { SimulatePaymentButton } from '@/features/payments/simulate-payment-button';
-import { serverEnv, paymentsMode } from '@/lib/env';
+import { serverEnv, allowSimulatedPayments } from '@/lib/env';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map-lazy';
 import { ReviewForm } from '@/features/reviews/review-form';
@@ -75,7 +75,7 @@ export default async function SolicitudDetalle({
   const pricing = order.pricing as unknown as QuoteBreakdown | null;
   const revealed = REVEAL_STATES.includes(state);
   const mpConfigured = Boolean(serverEnv.mp().accessToken);
-  const isProduction = paymentsMode() === 'production';
+  const puedeSimular = allowSimulatedPayments();
 
   const { getPlatformSettings } = await import('@/features/pricing/settings');
   const maxPasajeros = (await getPlatformSettings()).max_pasajeros;
@@ -277,7 +277,7 @@ export default async function SolicitudDetalle({
               <>
                 <PayButton orderId={order.id} amount={order.amount_upfront} />
                 {/* En modo test, red de seguridad para la demo (no cobra de verdad). */}
-                {!isProduction && (
+                {puedeSimular && (
                   <SimulatePaymentButton orderId={order.id} amount={order.amount_upfront} context="fallback" />
                 )}
               </>
@@ -314,10 +314,40 @@ export default async function SolicitudDetalle({
               ? 'Por ahora no hay grúas cerca. No se te cobró nada. Probá de nuevo en un rato.'
               : state === 'payment_expired'
                 ? 'La reserva se liberó porque no llegó el pago a tiempo. Podés volver a pedir.'
-                : 'No se te cobró nada. Cuando quieras, pedí una nueva grúa.'}
+                : 'No se te cobró nada.'}
           </p>
-          <Button asChild className="mt-4">
-            <Link href="/cliente/solicitar">Pedir una grúa</Link>
+          {/* El motivo, bien visible: si lo canceló la grúa o el admin, el cliente
+              tiene derecho a saber por qué sin ir a buscarlo al historial. */}
+          {order.cancellation_reason && (state === 'cancelled_by_provider' || state === 'cancelled_by_admin' || state === 'cancelled_by_client') && (
+            <div className="mx-auto mt-4 max-w-md rounded-xl bg-muted p-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Motivo</p>
+              <p className="mt-1 text-base">{order.cancellation_reason}</p>
+            </div>
+          )}
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link href="/cliente/solicitar">Pedir una grúa</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/cliente">Volver al inicio</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Terminado: lo primero es la reseña, en grande. Es LA acción de esta pantalla. */}
+      {state === 'completed' && !myReview && <ReviewForm orderId={order.id} />}
+      {state === 'completed' && myReview && (
+        <div className="rounded-2xl border border-border bg-card p-5 text-center">
+          <p className="text-sm font-medium">Tu reseña</p>
+          <span className="mt-1 inline-flex justify-center" aria-label={`${myReview.rating} de 5`}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Star key={n} className={n <= myReview!.rating ? 'h-5 w-5 fill-brand-orange text-brand-orange' : 'h-5 w-5 text-muted-foreground/40'} />
+            ))}
+          </span>
+          {myReview.comment && <p className="mt-2 text-sm text-muted-foreground">{myReview.comment}</p>}
+          <Button asChild variant="outline" size="sm" className="mt-4">
+            <Link href="/cliente">Volver al inicio</Link>
           </Button>
         </div>
       )}
@@ -387,27 +417,9 @@ export default async function SolicitudDetalle({
         </>
       )}
 
-      {/* Cierre ordenado, un paso a la vez: (1) el resumen ya está arriba (estado +
-          liquidación), (2) pedimos la reseña, (3) recién después los comprobantes y
-          el reintegro del seguro, plegados para no abrumar. */}
+      {/* Comprobantes y reintegro del seguro, plegados: la reseña ya está arriba. */}
       {state === 'completed' && (
         <>
-          {/* 2 — Reseña (el foco tras finalizar) */}
-          {!myReview ? (
-            <ReviewForm orderId={order.id} />
-          ) : (
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="mb-1 font-semibold">Tu reseña</h2>
-              <span className="inline-flex" aria-label={`${myReview.rating} de 5`}>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Star key={n} className={n <= myReview!.rating ? 'h-4 w-4 fill-brand-orange text-brand-orange' : 'h-4 w-4 text-muted-foreground/40'} />
-                ))}
-              </span>
-              {myReview.comment && <p className="mt-2 text-sm text-muted-foreground">{myReview.comment}</p>}
-            </div>
-          )}
-
-          {/* 3 — Comprobantes y reintegro del seguro, plegados */}
           <FocusDetails summary="Comprobantes y reintegro del seguro">
             <InvoiceButtons
               orderId={order.id}

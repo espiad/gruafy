@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { deleteDriver } from './actions';
 
@@ -30,10 +30,9 @@ export function DeleteDriverButton({ memberId, name }: { memberId: string; name:
       <div className="flex flex-col items-end">
         <button
           onClick={() => setConfirmar(true)}
-          aria-label={`Eliminar a ${name}`}
-          className="focus-ring rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          className="focus-ring rounded-md px-2 py-1 text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-destructive"
         >
-          <Trash2 className="h-4 w-4" />
+          Eliminar conductor
         </button>
         {error && <p className="mt-1 max-w-[220px] text-right text-xs text-destructive">{error}</p>}
       </div>

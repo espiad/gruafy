@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import { type OrderState } from '@/features/orders/state-machine';
 import { OrderAutoRefresh } from '@/features/orders/order-live';
 import { CountAlert } from '@/features/orders/live-alert';
-import { ExtrasReview } from '@/features/admin/extras-review';
 
 async function count(table: string, filter?: (q: ReturnType<Awaited<ReturnType<typeof createClient>>['from']>) => unknown) {
   const supabase = await createClient();
@@ -45,15 +44,8 @@ export default async function AdminDashboard() {
       count('payments', (q) => q.eq('status', 'rejected')),
     ]);
 
-  // Adicionales que superaron el tope y esperan decisión.
-  const { data: extrasPendientes } = await supabase
-    .from('service_extras')
-    .select('id, order_id, category, reason, amount')
-    .eq('status', 'needs_review')
-    .order('created_at', { ascending: false });
-
   // Novedades accionables: si suben, suena/vibra para que el admin no las pierda.
-  const actionable = searching + awaiting + providersPending + (extrasPendientes?.length ?? 0);
+  const actionable = searching + awaiting + providersPending;
 
   return (
     <div className="space-y-8">
@@ -61,8 +53,6 @@ export default async function AdminDashboard() {
       <OrderAutoRefresh active intervalMs={8000} />
       <CountAlert count={actionable} message="🔔 Nueva actividad en gruafy (admin)" />
       <h1 className="font-display text-2xl">Dashboard</h1>
-
-      <ExtrasReview extras={extrasPendientes ?? []} />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Servicios</h2>

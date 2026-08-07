@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, MapPin } from 'lucide-react';
+import Link from 'next/link';
+import { Loader2, MapPin, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { advanceOrderState } from './actions';
 import { haversineMeters } from '@/lib/geo/distance';
@@ -48,7 +49,22 @@ export function ServiceActionsPanel({
 
   if (!next) {
     if (state === 'completed') {
-      return <p className="rounded-xl border border-success/40 bg-success/5 p-4 text-center text-sm font-medium text-success">Servicio finalizado. ¡Buen viaje!</p>;
+      // Cerrado el servicio, lo que quiere el gruero es volver a trabajar: le damos
+      // la vuelta al panel en grande, no una pantalla muerta.
+      return (
+        <div className="rounded-2xl border-2 border-success bg-success/5 p-5 text-center">
+          <p className="font-display text-lg text-success">¡Servicio finalizado!</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Cobrale el saldo al cliente si todavía no lo hiciste. Ya podés tomar otro viaje.
+          </p>
+          <Link
+            href="/proveedor"
+            className="focus-ring mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream"
+          >
+            Buscar más viajes <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      );
     }
     return null;
   }
@@ -86,7 +102,7 @@ export function ServiceActionsPanel({
         setVerificando(false);
         avanzar();
       },
-      { enableHighAccuracy: true, timeout: 8000 },
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 },
     );
   }
 

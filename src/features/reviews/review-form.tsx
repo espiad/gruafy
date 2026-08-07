@@ -23,7 +23,12 @@ export function ReviewForm({ orderId }: { orderId: string }) {
       const res = await submitReview({ orderId, rating, comment });
       if (res.ok) {
         setDone(true);
-        router.refresh();
+        // Cerramos el ciclo: agradecemos y lo devolvemos al inicio, sin dejarlo
+        // varado en una pantalla de un servicio que ya terminó.
+        setTimeout(() => {
+          router.push('/cliente');
+          router.refresh();
+        }, 1600);
       } else setError(res.error ?? 'Error');
     });
   }
@@ -33,6 +38,7 @@ export function ReviewForm({ orderId }: { orderId: string }) {
       <div className="rounded-2xl border border-success/40 bg-success/5 p-5 text-center">
         <CheckCircle2 className="mx-auto h-6 w-6 text-success" />
         <p className="mt-2 font-medium">¡Gracias por tu reseña!</p>
+        <p className="mt-1 text-sm text-muted-foreground">Te llevamos al inicio…</p>
       </div>
     );
   }

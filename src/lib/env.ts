@@ -55,6 +55,15 @@ export const publicEnv = {
 export const hasSupabaseConfig = Boolean(publicEnv.supabaseUrl && publicEnv.supabaseKey);
 
 /**
+ * Permite el "pago simulado" aunque el modo sea producción. Pensado para una demo
+ * o defensa donde no se quiere (o no se puede) mover plata real. Se enciende con
+ * DEMO_PAYMENTS=true y se apaga sacando la variable.
+ */
+export function allowSimulatedPayments(): boolean {
+  return paymentsMode() !== 'production' || get('DEMO_PAYMENTS') === 'true';
+}
+
+/**
  * Candado de producción: si falta configuración crítica o datos legales reales,
  * el arranque en producción debe fallar de forma explícita (no silenciosa).
  * Devuelve la lista de problemas; vacía significa OK.

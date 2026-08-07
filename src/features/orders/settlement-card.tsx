@@ -26,8 +26,8 @@ export function SettlementCard({
   role: 'cliente' | 'gruero';
   anticipo?: number | null;
 }) {
-  const approved = extras.filter((e) => e.status === 'auto_approved' || e.status === 'approved');
-  const pending = extras.filter((e) => e.status === 'needs_review');
+  // Todos los adicionales cargados suman: ya no existen estados intermedios.
+  const approved = extras.filter((e) => e.status !== 'rejected');
   const extrasTotal = approved.reduce((a, e) => a + e.amount, 0);
   const totalGruero = saldoBase + extrasTotal;
 
@@ -65,19 +65,6 @@ export function SettlementCard({
         {anticipo != null && ` El anticipo de ${formatARS(anticipo)} ya lo pagaste por Mercado Pago.`}
       </p>
 
-      {pending.length > 0 && (
-        <div className="mt-3 rounded-lg bg-warning/15 p-3 text-xs text-warning-foreground">
-          <p className="font-medium">Adicionales en revisión (no incluidos en el total todavía):</p>
-          <ul className="mt-1 space-y-0.5">
-            {pending.map((e) => (
-              <li key={e.id} className="flex justify-between">
-                <span>{e.category} — {e.reason}</span>
-                <span className="tabular-nums">{formatARS(e.amount)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {role === 'cliente' && anticipo != null && (
         <p className="mt-3 flex items-center gap-1 text-xs text-success">

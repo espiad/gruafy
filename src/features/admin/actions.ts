@@ -219,40 +219,6 @@ export async function updateAdicionales(catalog: unknown[]): Promise<Result> {
   return { ok: true };
 }
 
-/**
- * Aprueba o rechaza un adicional que quedó en revisión (monto libre por encima del
- * tope). Aprobado, pasa a sumar en la liquidación; rechazado, no se cobra.
- */
-export async function reviewExtra(extraId: string, decision: 'approved' | 'rejected'): Promise<Result> {
-  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
-  const { createAdminClient } = await import('@/lib/supabase/admin');
-  const admin = createAdminClient();
-  const { data: updated, error } = await admin
-    .from('service_extras')
-    .update({ status: decision })
-    .eq('id', extraId)
-    .eq('status', 'needs_review')
-    .select('order_id, amount, category');
-  if (error || !updated || updated.length === 0) {
-    return { ok: false, error: 'No pudimos actualizar el adicional (¿ya estaba resuelto?)' };
-  }
-  const row = updated[0]!;
-  await admin.from('order_events').insert({
-    order_id: row.order_id,
-    actor_role: 'admin',
-    event: decision === 'approved'
-      ? `Adicional aprobado: ${row.category}`
-      : `Adicional rechazado: ${row.category}`,
-    meta: { amount: row.amount },
-  });
-  await audit('review_extra', 'service_extras', extraId, null, { decision });
-  revalidatePath('/admin');
-  revalidatePath(`/admin/servicios/${row.order_id}`);
-  revalidatePath(`/cliente/solicitudes/${row.order_id}`);
-  revalidatePath(`/proveedor/servicios/${row.order_id}`);
-  return { ok: true };
-}
-
 const setPasswordSchema = z.object({
   userId: z.string().uuid(),
   password: z.string().min(8, 'Mínimo 8 caracteres'),

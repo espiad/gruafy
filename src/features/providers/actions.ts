@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { assertTransition, type OrderState, type Actor } from '@/features/orders/state-machine';
 import { isValidCuit, normalizePatente, isValidPatente, isValidDni } from '@/lib/validation/argentina';
 
-type Result = { ok: boolean; error?: string; value?: unknown; needsReview?: boolean };
+type Result = { ok: boolean; error?: string; value?: unknown };
 
 async function providerOf(userId: string) {
   const supabase = await createClient();
@@ -320,12 +320,10 @@ export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Resu
     }
   }
 
-  // Si el monto salió de algo que YA definió el admin (precio fijo o dentro de un
-  // rango permitido), se aprueba solo: no tiene sentido mandar a revisión algo que
-  // la propia plataforma autorizó. Solo el modo 'libre' —donde el gruero escribe
-  // lo que quiere— queda sujeto al tope de auto-aprobación.
-  const status =
-    def.mode === 'libre' && amount > settings.extra_tope_auto ? 'needs_review' : 'auto_approved';
+  // Todo adicional que pasa las validaciones del catálogo se aprueba en el acto: los
+  // límites (precio fijo, rango y tope de cantidad) ya los define el admin, así que
+  // no hay nada que revisar después. Sin estados intermedios colgados.
+  const status = 'auto_approved';
   const { error } = await supabase.from('service_extras').insert({
     order_id: parsed.data.orderId,
     category: def.label, // guardamos la etiqueta legible para mostrar en la liquidación
@@ -336,8 +334,7 @@ export async function addExtra(input: z.infer<typeof extraSchema>): Promise<Resu
   if (error) return { ok: false, error: 'No pudimos cargar el adicional' };
   revalidatePath(`/proveedor/servicios/${parsed.data.orderId}`);
   revalidatePath(`/cliente/solicitudes/${parsed.data.orderId}`);
-  // needsReview: el form avisa que ese monto todavía NO suma al total.
-  return { ok: true, needsReview: status === 'needs_review' };
+  return { ok: true };
 }
 
 const onboardingSchema = z.object({

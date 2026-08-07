@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { paymentsMode } from '@/lib/env';
+import { allowSimulatedPayments } from '@/lib/env';
 
 const schema = z.object({ orderId: z.string().uuid() });
 
@@ -17,8 +17,9 @@ export async function simulatePayment(input: z.infer<typeof schema>) {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: 'Datos inválidos' };
 
-  // Candado: en producción nunca se simula, solo pago real.
-  if (paymentsMode() === 'production') {
+  // Candado: en producción no se simula, salvo que se habilite explícitamente
+  // (DEMO_PAYMENTS=true) para una demo sin mover plata real.
+  if (!allowSimulatedPayments()) {
     return { ok: false as const, error: 'En producción el pago es real: usá Mercado Pago.' };
   }
 

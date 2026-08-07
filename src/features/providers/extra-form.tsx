@@ -18,7 +18,7 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<{ label: string; amount: number; enRevision: boolean } | null>(null);
+  const [ok, setOk] = useState<{ label: string; amount: number } | null>(null);
   const activos = useMemo(() => adicionales.filter((a) => a.activo), [adicionales]);
   const [key, setKey] = useState<string>(activos[0]?.key ?? '');
 
@@ -46,7 +46,7 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
         form.reset();
         // Confirmación explícita: antes se agregaba en silencio (y la lista queda
         // plegada), así que parecía que no se había cargado.
-        setOk({ label: def?.label ?? 'Adicional', amount, enRevision: Boolean(res.needsReview) });
+        setOk({ label: def?.label ?? 'Adicional', amount });
         router.refresh();
       } else setError(res.error ?? 'No pudimos cargar el adicional');
     });
@@ -100,19 +100,8 @@ export function ExtraForm({ orderId, adicionales }: { orderId: string; adicional
         <Input name="reason" required placeholder="Ej: peaje Autopista Illia" className="h-11" />
       </div>
       {ok && (
-        <div className={`rounded-lg p-3 text-sm ${ok.enRevision ? 'bg-warning/15 text-warning-foreground' : 'bg-success/10 text-success'}`}>
-          {ok.enRevision ? (
-            <>
-              <strong>{ok.label} · {formatARS(ok.amount)} quedó EN REVISIÓN.</strong> Supera el tope de
-              auto-aprobación, así que todavía <strong>no suma</strong> al total a cobrar. Un
-              administrador lo revisa.
-            </>
-          ) : (
-            <>
-              <strong>{ok.label} · {formatARS(ok.amount)} agregado.</strong> Ya suma al total a cobrarle
-              al cliente.
-            </>
-          )}
+        <div className="rounded-lg bg-success/10 p-3 text-sm text-success">
+          <strong>{ok.label} · {formatARS(ok.amount)} agregado.</strong> Ya suma al total a cobrarle al cliente.
         </div>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
