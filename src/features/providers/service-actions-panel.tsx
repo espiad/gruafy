@@ -176,9 +176,12 @@ export function ServiceActionsPanel({
         setVerificando(false);
         setLejos(-1); // -1 = no pudimos medir (permiso denegado, sin señal o timeout)
       },
-      // Sin alta precisión y cacheando un minuto para que sea rápido, pero con
-      // margen real: 4s no alcanzaba en la calle y siempre caía en el timeout.
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+      // El seguimiento en vivo ya mantiene un GPS fresco corriendo (watchPosition),
+      // así que aceptamos una posición reciente (hasta 5 min) en vez de forzar una
+      // lectura nueva. Antes, en el 2º chequeo (entrega) esa lectura fresca se pasaba
+      // del timeout y fallaba, aunque el GPS estuviera perfecto. Alta precisión para
+      // que la posición sea compatible con la del seguimiento.
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 300000 },
     );
   }
 

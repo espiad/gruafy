@@ -408,16 +408,16 @@ export function LocationPicker({ origin, dest, onOrigin, onDest, onDistance }: P
         <button
           type="button"
           onClick={() => setActiveField('origin')}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-md border py-2 font-medium ${active === 'origin' ? 'border-brand-green bg-brand-green/10 text-brand-green' : 'border-input text-muted-foreground'}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-2 font-medium ${active === 'origin' ? 'border-brand-green bg-brand-green/10 text-brand-green' : 'border-input text-muted-foreground'}`}
         >
-          <MapPin className="h-3.5 w-3.5" /> Fijar origen en el mapa
+          <MapPin className="h-3.5 w-3.5 shrink-0" /> Fijar origen
         </button>
         <button
           type="button"
           onClick={() => setActiveField('dest')}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-md border py-2 font-medium ${active === 'dest' ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-2 font-medium ${active === 'dest' ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'}`}
         >
-          <Flag className="h-3.5 w-3.5" /> Fijar destino en el mapa
+          <Flag className="h-3.5 w-3.5 shrink-0" /> Fijar destino
         </button>
       </div>
 

@@ -202,6 +202,42 @@ export default async function SolicitudDetalle({
     }
   }
 
+  // Al terminar el servicio, dejamos visibles SOLO la reseña y los comprobantes/
+  // reintegro. El resto (contacto de la grúa, liquidación) queda plegado: sigue a un
+  // toque, pero no compite con lo único que el cliente tiene que hacer ahora.
+  const esCompletado = state === 'completed';
+
+  // Tarjeta de contacto con la grúa. La extraemos para poder mostrarla suelta durante
+  // el servicio y plegada una vez terminado, sin duplicar el markup.
+  const grueroContact =
+    revealed && provider ? (
+      <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
+        <div className="flex items-center gap-3">
+          {driverPhotoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={driverPhotoUrl} alt={driverName ?? 'Conductor'} className="h-14 w-14 shrink-0 rounded-full border border-border object-cover" />
+          )}
+          <div>
+            <p className="text-sm">
+              <strong>{provider.legal_name}</strong> · ★ {provider.rating_avg.toFixed(1)}
+              {truckPatente ? ` · Grúa ${truckPatente}` : ''}
+            </p>
+            {driverName && <p className="text-xs text-muted-foreground">Te rescata: {driverName}</p>}
+          </div>
+        </div>
+        {provider.contact_phone && (
+          <div className="mt-3 flex gap-2">
+            <a href={`tel:${provider.contact_phone.replace(/\D/g, '')}`} className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-input py-2 text-sm font-medium hover:bg-accent">
+              <Phone className="h-4 w-4" /> Llamar
+            </a>
+            <a href={`https://wa.me/${provider.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-green py-2 text-sm font-semibold text-brand-cream">
+              <MessageCircle className="h-4 w-4" /> WhatsApp
+            </a>
+          </div>
+        )}
+      </div>
+    ) : null;
+
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div className="flex items-center justify-between">
@@ -459,43 +495,23 @@ export default async function SolicitudDetalle({
         </>
       )}
 
-      {/* Contacto directo con la grúa: parte del objetivo una vez pagado. Compacto. */}
-      {revealed && provider && (
-        <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
-          <div className="flex items-center gap-3">
-            {driverPhotoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={driverPhotoUrl} alt={driverName ?? 'Conductor'} className="h-14 w-14 shrink-0 rounded-full border border-border object-cover" />
-            )}
-            <div>
-              <p className="text-sm">
-                <strong>{provider.legal_name}</strong> · ★ {provider.rating_avg.toFixed(1)}
-                {truckPatente ? ` · Grúa ${truckPatente}` : ''}
-              </p>
-              {driverName && <p className="text-xs text-muted-foreground">Te rescata: {driverName}</p>}
-            </div>
-          </div>
-          {provider.contact_phone && (
-            <div className="mt-3 flex gap-2">
-              <a href={`tel:${provider.contact_phone.replace(/\D/g, '')}`} className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-input py-2 text-sm font-medium hover:bg-accent">
-                <Phone className="h-4 w-4" /> Llamar
-              </a>
-              <a href={`https://wa.me/${provider.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-green py-2 text-sm font-semibold text-brand-cream">
-                <MessageCircle className="h-4 w-4" /> WhatsApp
-              </a>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Contacto con la grúa: suelto mientras dura el servicio, plegado al terminar. */}
+      {grueroContact &&
+        (esCompletado ? (
+          <FocusDetails summary="Datos de la grúa que te asistió">{grueroContact}</FocusDetails>
+        ) : (
+          grueroContact
+        ))}
 
-      {/* Liquidación: qué pagarle al gruero (saldo + adicionales), con total claro. */}
+      {/* Liquidación: qué pagarle al gruero (saldo + adicionales). Al terminar, plegada. */}
       {SETTLEMENT_STATES.includes(state) && pricing && (
-        <SettlementCard
-          saldoBase={pricing.saldo_estimado_gruero ?? 0}
-          extras={extras}
-          role="cliente"
-          anticipo={order.amount_upfront}
-        />
+        esCompletado ? (
+          <FocusDetails summary="Detalle de lo que pagaste">
+            <SettlementCard saldoBase={pricing.saldo_estimado_gruero ?? 0} extras={extras} role="cliente" anticipo={order.amount_upfront} />
+          </FocusDetails>
+        ) : (
+          <SettlementCard saldoBase={pricing.saldo_estimado_gruero ?? 0} extras={extras} role="cliente" anticipo={order.amount_upfront} />
+        )
       )}
 
       {/* Cupo del vehículo: hay que responderlo, no alcanza con avisar. */}
@@ -511,29 +527,29 @@ export default async function SolicitudDetalle({
         </>
       )}
 
-      {/* Comprobantes y reintegro del seguro, plegados: la reseña ya está arriba. */}
+      {/* Comprobantes y reintegro: VISIBLE al terminar, junto con la reseña. Son las
+          dos únicas cosas que el cliente quiere a mano recién cerrado el servicio. */}
       {state === 'completed' && (
-        <>
-          <FocusDetails summary="Comprobantes y reintegro del seguro">
-            <InvoiceButtons
-              orderId={order.id}
-              providerPhone={provider?.contact_phone ?? null}
-              providerName={provider?.legal_name ?? null}
-              amountUpfront={order.amount_upfront}
-              amountService={pricing ? pricing.saldo_estimado_gruero + extrasAprobados : null}
-            />
-            <InsuranceGuide
-              orderId={order.id}
-              originAddress={order.origin_address}
-              destAddress={order.dest_address}
-              completedAt={order.completed_at}
-              vehicle={vehicleLabel}
-              providerName={provider?.legal_name ?? null}
-              amountUpfront={order.amount_upfront}
-              amountService={pricing ? pricing.saldo_estimado_gruero + extrasAprobados : null}
-            />
-          </FocusDetails>
-        </>
+        <div className="space-y-4 rounded-2xl border border-border bg-card p-5">
+          <h2 className="font-semibold">Comprobantes y reintegro del seguro</h2>
+          <InvoiceButtons
+            orderId={order.id}
+            providerPhone={provider?.contact_phone ?? null}
+            providerName={provider?.legal_name ?? null}
+            amountUpfront={order.amount_upfront}
+            amountService={pricing ? pricing.saldo_estimado_gruero + extrasAprobados : null}
+          />
+          <InsuranceGuide
+            orderId={order.id}
+            originAddress={order.origin_address}
+            destAddress={order.dest_address}
+            completedAt={order.completed_at}
+            vehicle={vehicleLabel}
+            providerName={provider?.legal_name ?? null}
+            amountUpfront={order.amount_upfront}
+            amountService={pricing ? pricing.saldo_estimado_gruero + extrasAprobados : null}
+          />
+        </div>
       )}
 
       {/* Todo lo secundario, plegado: no distrae del paso actual, pero está a un toque. */}
