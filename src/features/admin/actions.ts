@@ -151,16 +151,41 @@ export async function decideProvider(input: z.infer<typeof decisionSchema>): Pro
   return { ok: true };
 }
 
-const settingsSchema = z.record(
-  z.string(),
-  z.union([z.number(), z.boolean(), z.array(z.number()), z.array(z.string())]),
-);
+/**
+ * Rangos de cada parámetro. Sin esto, vaciar un campo del formulario mandaba 0 y
+ * se guardaba: comisión 0 deja `amount_upfront = 0` y toda orden nueva se traba al
+ * crear la preferencia de Mercado Pago ("Importe inválido"). Un porcentaje se
+ * expresa en tanto por uno (0,2 = 20%).
+ */
+const settingsSchema = z
+  .object({
+    movida_base: z.number().min(1).max(10_000_000).optional(),
+    precio_km: z.number().min(1).max(1_000_000).optional(),
+    dolly: z.number().min(0).max(10_000_000).optional(),
+    comision_gruafy: z.number().min(0.01).max(0.9).optional(),
+    iva_gruero: z.number().min(0).max(0.9).optional(),
+    fee_mp: z.number().min(0).max(0.5).optional(),
+    iva_fee_mp: z.number().min(0).max(0.9).optional(),
+    oferta_proveedor_segundos: z.number().int().min(30).max(1800).optional(),
+    pago_cliente_segundos: z.number().int().min(120).max(7200).optional(),
+    radio_busqueda_km: z.number().min(1).max(500).optional(),
+    extra_tope_auto: z.number().min(0).max(10_000_000).optional(),
+    max_pasajeros: z.number().int().min(0).max(6).optional(),
+    dias_gracia_documentacion: z.number().int().min(1).max(90).optional(),
+    permitir_pago_simulado: z.boolean().optional(),
+  })
+  // El formulario manda solo lo que edita; el resto del JSON (catálogo de
+  // adicionales, etc.) se preserva por el merge de abajo.
+  .strict();
 
 /** Actualiza los parámetros de la plataforma (versiona y audita). Solo órdenes nuevas. */
 export async function updateSettings(values: Record<string, unknown>): Promise<Result> {
   if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
   const parsed = settingsSchema.safeParse(values);
-  if (!parsed.success) return { ok: false, error: 'Parámetros inválidos' };
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { ok: false, error: `Revisá "${issue?.path.join('.') ?? 'los parámetros'}": ${issue?.message ?? 'valor inválido'}` };
+  }
   const supabase = await createClient();
   const { data: current } = await supabase.from('platform_settings').select('version, values').eq('id', 1).single();
   const nextVersion = (current?.version ?? 0) + 1;
@@ -171,10 +196,20 @@ export async function updateSettings(values: Record<string, unknown>): Promise<R
   // MERGE sobre lo existente (no reemplazo): así guardar los parámetros numéricos
   // no pisa el catálogo de adicionales ni otras claves no incluidas en el form.
   const mergedValues = { ...((current?.values as Record<string, unknown>) ?? {}), ...parsed.data };
-  await supabase
+  // Guardado por versión: si otro admin (u otra pestaña) guardó mientras tanto, no
+  // le pisamos los cambios con una copia vieja.
+  const { data: guardado, error: errGuardar } = await supabase
     .from('platform_settings')
     .update({ values: mergedValues as never, version: nextVersion, updated_by: user?.id ?? null, updated_at: new Date().toISOString() })
-    .eq('id', 1);
+    .eq('id', 1)
+    .eq('version', current?.version ?? 0)
+    .select('id');
+  if (errGuardar || !guardado || guardado.length === 0) {
+    return {
+      ok: false,
+      error: errGuardar?.message ?? 'Alguien más cambió la configuración mientras editabas. Recargá y volvé a intentar.',
+    };
+  }
   await audit('update_settings', 'platform_settings', '1', current?.values, mergedValues);
   revalidatePath('/admin/configuracion');
   return { ok: true };
@@ -604,6 +639,7 @@ export interface UsuarioAdminRow {
   id: string;
   email: string;
   role: string;
+  status: string;
   first_name: string | null;
   last_name: string | null;
   protegido: boolean;
@@ -619,7 +655,7 @@ export async function listUsers(query = ''): Promise<UsuarioAdminRow[]> {
   const emails = new Map((authList?.users ?? []).map((u) => [u.id, u.email ?? '']));
   const { data: profiles } = await admin
     .from('profiles')
-    .select('id, role, first_name, last_name')
+    .select('id, role, status, first_name, last_name')
     .order('created_at', { ascending: false });
 
   const q = query.trim().toLowerCase();
@@ -630,6 +666,7 @@ export async function listUsers(query = ''): Promise<UsuarioAdminRow[]> {
         id: p.id,
         email,
         role: p.role as string,
+        status: p.status as string,
         first_name: p.first_name,
         last_name: p.last_name,
         protegido: email.toLowerCase() === ADMIN_PROTEGIDO,
@@ -744,4 +781,87 @@ export async function createAdminUser(input: z.infer<typeof nuevoAdminSchema>): 
   await audit('create_admin', 'profiles', created.user.id, null, { email });
   revalidatePath('/admin/usuarios');
   return { ok: true };
+}
+
+const bloqueoSchema = z.object({
+  userId: z.string().uuid(),
+  bloquear: z.boolean(),
+  motivo: z.string().trim().max(200).optional(),
+});
+
+/**
+ * Bloquea o rehabilita una cuenta. `profiles.status` ya existía en el esquema pero
+ * NADIE lo miraba: suspender a alguien no tenía ningún efecto. Ahora los layouts
+ * privados lo verifican, así que un bloqueado no entra a ningún panel.
+ */
+export async function setUserBlocked(input: z.infer<typeof bloqueoSchema>): Promise<Result> {
+  if (!(await ensureAdmin())) return { ok: false, error: 'No autorizado' };
+  const parsed = bloqueoSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
+  const { userId, bloquear, motivo } = parsed.data;
+
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const admin = createAdminClient();
+
+  const { data: target } = await admin.auth.admin.getUserById(userId);
+  if ((target?.user?.email ?? '').toLowerCase() === ADMIN_PROTEGIDO && bloquear) {
+    return { ok: false, error: 'No se puede bloquear la administración principal.' };
+  }
+
+  const { data: prev } = await admin.from('profiles').select('role, status').eq('id', userId).single();
+  if (!prev) return { ok: false, error: 'Usuario no encontrado' };
+  if (prev.status === 'deleted') return { ok: false, error: 'Esa cuenta está eliminada.' };
+
+  // Con un servicio en curso, bloquear deja a la otra punta colgada.
+  if (bloquear) {
+    const enCurso = await contarServiciosEnCurso(admin, userId, prev.role);
+    if (enCurso > 0) {
+      return { ok: false, error: `Tiene ${enCurso} servicio(s) en curso. Cerralos o cancelalos antes de bloquear.` };
+    }
+  }
+
+  const { data: upd, error } = await admin
+    .from('profiles')
+    .update({ status: bloquear ? 'suspended' : 'active' })
+    .eq('id', userId)
+    .select('id');
+  if (error || !upd || upd.length === 0) return { ok: false, error: 'No pudimos cambiar el estado' };
+
+  // Si es proveedor, además lo bajamos de la calle para que deje de recibir ofertas.
+  if (bloquear && prev.role === 'provider_owner') {
+    await admin.from('provider_accounts').update({ is_available: false }).eq('owner_id', userId);
+  }
+
+  await audit('set_user_blocked', 'profiles', userId, { status: prev.status }, { status: bloquear ? 'suspended' : 'active', motivo });
+  revalidatePath('/admin/usuarios');
+  return { ok: true };
+}
+
+/** Cuenta servicios abiertos de un usuario, sea cliente o dueño de una grúa. */
+async function contarServiciosEnCurso(
+  admin: ReturnType<typeof import('@/lib/supabase/admin').createAdminClient>,
+  userId: string,
+  role: string,
+): Promise<number> {
+  const ABIERTOS: import('@/types/database').OrderStateDb[] = [
+    'searching_provider', 'provider_reserved', 'awaiting_payment', 'payment_pending',
+    'paid', 'provider_en_route', 'provider_arrived', 'vehicle_loaded', 'in_transit', 'completion_pending',
+  ];
+
+  if (role === 'provider_owner') {
+    const { data: cuenta } = await admin.from('provider_accounts').select('id').eq('owner_id', userId).maybeSingle();
+    if (!cuenta) return 0;
+    const { count } = await admin
+      .from('service_orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('provider_id', cuenta.id)
+      .in('state', ABIERTOS);
+    return count ?? 0;
+  }
+  const { count } = await admin
+    .from('service_orders')
+    .select('*', { count: 'exact', head: true })
+    .eq('client_id', userId)
+    .in('state', ABIERTOS);
+  return count ?? 0;
 }

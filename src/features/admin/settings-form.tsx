@@ -48,16 +48,21 @@ export function SettingsForm({ initial }: { initial: PlatformValues }) {
     e.preventDefault();
     setSaved(false);
     setError(null);
+    // Mandamos SOLO lo que este formulario edita. Antes se hacía `{...initial}`, que
+    // arrastraba `adicionales` (un array de objetos): la validación del servidor lo
+    // rechazaba y NADA se guardaba nunca, con la UI diciendo "Guardado". El servidor
+    // hace merge, así que lo que no mandamos queda intacto.
+    const values: Record<string, number | boolean> = {};
     const f = new FormData(e.currentTarget);
-    const values: Record<string, number | boolean | string[]> = { ...initial } as never;
     for (const field of FIELDS) {
       const raw = Number(f.get(field.key));
+      if (!Number.isFinite(raw)) {
+        setError(`Revisá el valor de "${field.label}".`);
+        return;
+      }
       values[field.key as string] = field.percent ? raw / 100 : raw;
     }
     for (const s of SWITCHES) values[s.key as string] = switches[s.key as string] ?? false;
-    values['extras_categorias'] = initial.extras_categorias;
-    values['km_redondeo'] = initial.km_redondeo;
-    values['max_pasajeros'] = initial.max_pasajeros;
 
     start(async () => {
       const res = await updateSettings(values);

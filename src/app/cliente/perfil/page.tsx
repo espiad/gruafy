@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getProfile } from '@/lib/auth/session';
 import { ProfileForm } from './profile-form';
+import { DeleteAccount } from '@/features/account/delete-account';
 
 export const metadata: Metadata = { title: 'Mi perfil' };
 
@@ -16,6 +17,7 @@ export default async function PerfilPage() {
           phone: profile?.phone ?? '',
         }}
       />
+      <DeleteAccount />
     </div>
   );
 }

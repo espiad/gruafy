@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, ShieldCheck, Search, UserPlus, Lock } from 'lucide-react';
+import { Loader2, ShieldCheck, Search, UserPlus, Lock, Ban, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { setUserRole, createAdminUser, type UsuarioAdminRow } from './actions';
+import { setUserRole, createAdminUser, setUserBlocked, type UsuarioAdminRow } from './actions';
 
 const ROLES: { key: 'client' | 'provider_owner' | 'admin'; label: string }[] = [
   { key: 'client', label: 'Cliente' },
@@ -20,6 +20,15 @@ function FilaUsuario({ u }: { u: UsuarioAdminRow }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const nombre = [u.first_name, u.last_name].filter(Boolean).join(' ');
+
+  function bloquear(activar: boolean) {
+    setError(null);
+    start(async () => {
+      const res = await setUserBlocked({ userId: u.id, bloquear: activar });
+      if (res.ok) router.refresh();
+      else setError(res.error ?? 'No pudimos cambiar el estado');
+    });
+  }
 
   function cambiar(role: 'client' | 'provider_owner' | 'admin') {
     if (role === u.role) return;
@@ -63,6 +72,29 @@ function FilaUsuario({ u }: { u: UsuarioAdminRow }) {
               );
             })}
           </div>
+        )}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+        <span
+          className={`text-xs font-medium ${
+            u.status === 'active' ? 'text-muted-foreground' : 'text-destructive'
+          }`}
+        >
+          {u.status === 'active' ? 'Activa' : u.status === 'deleted' ? 'Eliminada por el titular' : 'Bloqueada'}
+        </span>
+        {!u.protegido && u.status !== 'deleted' && (
+          <button
+            onClick={() => bloquear(u.status === 'active')}
+            disabled={pending}
+            className={`focus-ring inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
+              u.status === 'active'
+                ? 'text-destructive hover:bg-destructive/10'
+                : 'text-success hover:bg-success/10'
+            }`}
+          >
+            {u.status === 'active' ? <Ban className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
+            {u.status === 'active' ? 'Bloquear' : 'Desbloquear'}
+          </button>
         )}
       </div>
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}

@@ -21,6 +21,21 @@ export async function createUpfrontPreference(orderId: string) {
   if (order.state !== 'awaiting_payment') throw new Error('La orden no está esperando pago');
   if (!order.amount_upfront || order.amount_upfront <= 0) throw new Error('Importe inválido');
 
+  // Candado anti doble cobro. El estado no alcanza: entre que Mercado Pago aprueba
+  // y llega el webhook, la orden sigue en `awaiting_payment`, así que volver atrás
+  // en el navegador (o abrir el checkout en dos pestañas) permitía pagar dos veces
+  // el mismo anticipo, sin ninguna devolución automática.
+  const { data: yaPago } = await admin
+    .from('payments')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('type', 'gruafy_upfront')
+    .eq('status', 'approved')
+    .limit(1);
+  if (yaPago && yaPago.length > 0) {
+    throw new Error('El anticipo de esta reserva ya está pago. Actualizá la pantalla.');
+  }
+
   const pref = preferenceApi();
   if (!pref) throw new Error('Mercado Pago no está configurado');
 
@@ -162,7 +177,10 @@ export async function reconcilePayment(mpPaymentId: string): Promise<void> {
       .from('service_orders')
       .update({ state: 'paid', paid_at: new Date().toISOString() })
       .eq('id', orderId)
-      .in('state', ['awaiting_payment', 'payment_pending'])
+      // `payment_expired` incluido a propósito: si el pago se aprueba justo después
+      // de que el barrido venció la reserva, la plata ya salió de la cuenta del
+      // cliente. Rechazarlo dejaba el cobro hecho y el servicio muerto, sin devolución.
+      .in('state', ['awaiting_payment', 'payment_pending', 'payment_expired'])
       .select('id');
     if (updated && updated.length > 0) {
       await admin.from('order_events').insert({

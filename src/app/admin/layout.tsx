@@ -17,6 +17,9 @@ const NAV: NavItem[] = [
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
   if (!profile) redirect('/ingresar?next=/admin');
+  // `status` existía en el esquema pero no lo miraba nadie: suspender una cuenta
+  // no tenía ningún efecto. Este es el punto por el que pasan todas las rutas privadas.
+  if (profile.status !== 'active') redirect('/cuenta-bloqueada');
   if (profile.role !== 'admin') redirect('/');
 
   const name = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Admin';

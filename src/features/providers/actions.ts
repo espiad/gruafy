@@ -125,16 +125,35 @@ export async function acceptOffer(orderId: string, driverId?: string): Promise<R
     p_provider_id: provider.id,
     p_pay_seconds: settings.pago_cliente_segundos,
   });
-  if (error) return { ok: false, error: 'No se pudo aceptar (¿ya la tomó otro?)' };
-  if (data !== true) return { ok: false, error: 'La oferta ya no está disponible' };
+  // El RPC resuelve la carrera con un lock de fila: si dos grueros aceptan a la
+  // vez, uno recibe true y el resto false. No es un error del que pierde, así que
+  // se lo decimos sin que parezca que hizo algo mal.
+  if (error) return { ok: false, error: 'No pudimos tomar el viaje. Probá de nuevo.' };
+  if (data !== true) {
+    return {
+      ok: false,
+      error: 'Este viaje ya no está disponible: lo tomó otra grúa o el cliente lo canceló.',
+    };
+  }
 
   // Registra qué conductor está manejando (para mostrarle los datos correctos al
   // cliente). Guardado por provider_id: solo sobre la orden que este proveedor tomó.
-  await supabase
+  const { data: conductorOk } = await supabase
     .from('service_orders')
     .update({ driver_id: chosenDriver })
     .eq('id', orderId)
-    .eq('provider_id', provider.id);
+    .eq('provider_id', provider.id)
+    .select('id');
+  if (!conductorOk || conductorOk.length === 0) {
+    // La oferta ya quedó tomada (eso es lo importante), pero sin conductor el
+    // cliente no ve a quién esperar. Queda registrado para poder rastrearlo en
+    // vez de descubrirlo por una orden con grúa y sin conductor.
+    await supabase.from('order_events').insert({
+      order_id: orderId,
+      actor_role: 'provider_owner',
+      event: 'Aviso: no se pudo registrar el conductor asignado',
+    });
+  }
 
   // Push al cliente: una grúa aceptó, hay que pagar el anticipo.
   try {

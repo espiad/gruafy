@@ -17,6 +17,9 @@ const NAV: NavItem[] = [
 export default async function ClienteLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
   if (!profile) redirect('/ingresar?next=/cliente');
+  // `status` existía en el esquema pero no lo miraba nadie: suspender una cuenta
+  // no tenía ningún efecto. Este es el punto por el que pasan todas las rutas privadas.
+  if (profile.status !== 'active') redirect('/cuenta-bloqueada');
   // Los proveedores y admins tienen su propia área.
   if (profile.role === 'admin') redirect('/admin');
   if (profile.role === 'provider_owner' || profile.role === 'provider_driver') redirect('/proveedor');
