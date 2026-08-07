@@ -21,13 +21,17 @@ const STATUS_UI: Record<ProviderStatus, { icon: typeof Clock; label: string; ton
   suspended: { icon: XCircle, label: 'Suspendida', tone: 'text-destructive', help: 'Tu cuenta está suspendida. Escribinos a soporte.' },
 };
 
+// Agrupados por a qué están vinculados, para que se entienda de un vistazo qué
+// documento corresponde a qué. `kind` (dónde se guarda) es aparte del `group`
+// (cómo se muestra): la habilitación/RUTA es de la empresa pero se lee junto a la
+// grúa, que es lo natural para el gruero.
 const DOC_TYPES = [
-  { key: 'seguro_empresa', label: 'Seguro de la empresa', kind: 'provider' as const },
-  { key: 'habilitacion', label: 'Habilitación / RUTA', kind: 'provider' as const },
-  { key: 'vtv', label: 'VTV de la grúa', kind: 'truck' as const },
-  { key: 'seguro_grua', label: 'Seguro vigente de la grúa', kind: 'truck' as const },
-  { key: 'licencia', label: 'Licencia del conductor', kind: 'driver' as const },
-  { key: 'linti', label: 'LiNTI (si corresponde)', kind: 'driver' as const },
+  { key: 'licencia', label: 'Licencia del conductor', kind: 'driver' as const, group: 'Vinculados al conductor' },
+  { key: 'linti', label: 'LiNTI (si corresponde)', kind: 'driver' as const, group: 'Vinculados al conductor' },
+  { key: 'vtv', label: 'VTV de la grúa', kind: 'truck' as const, group: 'Vinculados a la grúa / unidad' },
+  { key: 'seguro_grua', label: 'Seguro vigente de la grúa', kind: 'truck' as const, group: 'Vinculados a la grúa / unidad' },
+  { key: 'habilitacion', label: 'Habilitación / RUTA', kind: 'provider' as const, group: 'Vinculados a la grúa / unidad' },
+  { key: 'seguro_empresa', label: 'Seguro de la empresa', kind: 'provider' as const, group: 'Vinculado a la empresa proveedora' },
 ];
 
 export default async function EstadoSolicitudPage() {

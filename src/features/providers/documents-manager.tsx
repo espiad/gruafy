@@ -15,6 +15,8 @@ interface DocType {
   key: string;
   label: string;
   kind: 'provider' | 'truck' | 'driver';
+  /** Título de la sección donde se agrupa (ej: "Vinculados al conductor"). */
+  group?: string;
 }
 interface ExistingDoc {
   id: string;
@@ -45,6 +47,17 @@ export function DocumentsManager({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Agrupamos por `group` preservando el orden en que llegan (sin ordenar alfabético,
+  // para respetar el orden pensado: conductor → grúa → empresa).
+  const grupos: [string, DocType[]][] = [];
+  for (const dt of docTypes) {
+    const titulo = dt.group ?? 'Documentación';
+    const g = grupos.find(([t]) => t === titulo);
+    if (g) g[1].push(dt);
+    else grupos.push([titulo, [dt]]);
+  }
+
   const [error, setError] = useState<string | null>(null);
 
   async function onUpload(dt: DocType, file: File) {
@@ -108,51 +121,59 @@ export function DocumentsManager({
         </p>
       )}
       {error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-      <ul className="divide-y divide-border">
-        {docTypes.map((dt) => {
-          const doc = existing.find((d) => d.doc_type === dt.key);
-          const review = doc ? REVIEW_UI[doc.review_status] : null;
-          return (
-            <li key={dt.key} className="flex items-center justify-between gap-3 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{dt.label}</p>
-                {doc && review && (
-                  <span className={`inline-flex items-center gap-1 text-xs ${review.tone}`}>
-                    <review.icon className="h-3.5 w-3.5" /> {review.label}
-                    {doc.admin_note && ` · ${doc.admin_note}`}
-                  </span>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {doc ? (
-                  editable && (
-                    <button onClick={() => remove(doc.id)} disabled={pending} className="focus-ring rounded-md p-2 text-muted-foreground hover:text-destructive" aria-label="Eliminar">
-                      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </button>
-                  )
-                ) : (
-                  editable && (
-                    <label className="focus-ring inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-input px-3 text-sm hover:bg-accent">
-                      {busy === dt.key ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      Subir
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        className="sr-only"
-                        disabled={busy !== null}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) void onUpload(dt, f);
-                        }}
-                      />
-                    </label>
-                  )
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+
+      {/* Agrupados por a qué están vinculados (conductor / grúa / empresa), en el
+          orden en que llegan los docTypes. Mismo espaciado para todos los grupos. */}
+      {grupos.map(([titulo, items]) => (
+        <div key={titulo} className="space-y-1">
+          <h3 className="text-sm font-semibold">{titulo}</h3>
+          <ul className="divide-y divide-border">
+            {items.map((dt) => {
+              const doc = existing.find((d) => d.doc_type === dt.key);
+              const review = doc ? REVIEW_UI[doc.review_status] : null;
+              return (
+                <li key={dt.key} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{dt.label}</p>
+                    {doc && review && (
+                      <span className={`inline-flex items-center gap-1 text-xs ${review.tone}`}>
+                        <review.icon className="h-3.5 w-3.5" /> {review.label}
+                        {doc.admin_note && ` · ${doc.admin_note}`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {doc ? (
+                      editable && (
+                        <button onClick={() => remove(doc.id)} disabled={pending} className="focus-ring rounded-md p-2 text-muted-foreground hover:text-destructive" aria-label="Eliminar">
+                          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                      )
+                    ) : (
+                      editable && (
+                        <label className="focus-ring inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-input px-3 text-sm hover:bg-accent">
+                          {busy === dt.key ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          Subir
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="sr-only"
+                            disabled={busy !== null}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) void onUpload(dt, f);
+                            }}
+                          />
+                        </label>
+                      )
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
