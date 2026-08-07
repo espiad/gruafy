@@ -6,6 +6,7 @@ import { ProviderReviews } from '@/features/reviews/provider-reviews';
 import { CompanyEditor, TruckEditor, TrucksHeading } from '@/features/providers/provider-profile-editor';
 import { DeleteAccount } from '@/features/account/delete-account';
 import { ChangePassword } from '@/features/account/change-password';
+import { GoogleAccountNotice } from '@/features/account/google-account-notice';
 import { tieneContrasena } from '@/features/account/password-actions';
 
 export const metadata: Metadata = { title: 'Perfil de la grúa' };
@@ -61,7 +62,7 @@ export default async function ProveedorPerfil() {
 
       <ProviderReviews providerId={provider.id} title="Lo que dicen tus clientes" />
 
-      {(await tieneContrasena()) && <ChangePassword />}
+      {(await tieneContrasena()) ? <ChangePassword /> : <GoogleAccountNotice />}
 
       <DeleteAccount />
     </div>

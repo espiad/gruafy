@@ -3,6 +3,7 @@ import { getProfile } from '@/lib/auth/session';
 import { ProfileForm } from './profile-form';
 import { DeleteAccount } from '@/features/account/delete-account';
 import { ChangePassword } from '@/features/account/change-password';
+import { GoogleAccountNotice } from '@/features/account/google-account-notice';
 import { tieneContrasena } from '@/features/account/password-actions';
 
 export const metadata: Metadata = { title: 'Mi perfil' };
@@ -20,7 +21,7 @@ export default async function PerfilPage() {
           phone: profile?.phone ?? '',
         }}
       />
-      {conContrasena && <ChangePassword />}
+      {conContrasena ? <ChangePassword /> : <GoogleAccountNotice />}
       <DeleteAccount />
     </div>
   );
