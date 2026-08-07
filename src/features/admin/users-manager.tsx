@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { setUserRole, createAdminUser, setUserBlocked, type UsuarioAdminRow } from './actions';
+import { TempPassword } from './temp-password';
 
 const ROLES: { key: 'client' | 'provider_owner' | 'admin'; label: string }[] = [
   { key: 'client', label: 'Cliente' },
@@ -74,6 +75,10 @@ function FilaUsuario({ u }: { u: UsuarioAdminRow }) {
           </div>
         )}
       </div>
+      {/* Soporte: si perdió la contraseña, acá se le da una temporal. Es el único
+          camino mientras no salgan los mails de recuperación. */}
+      {u.status !== 'deleted' && <TempPassword userId={u.id} email={u.email} />}
+
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
         <span
           className={`text-xs font-medium ${

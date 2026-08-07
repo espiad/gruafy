@@ -386,9 +386,32 @@ export async function adminSetPassword(input: z.infer<typeof setPasswordSchema>)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
   const { createAdminClient } = await import('@/lib/supabase/admin');
   const admin = createAdminClient();
+
+  const { data: target } = await admin.auth.admin.getUserById(parsed.data.userId);
+  const email = (target?.user?.email ?? '').toLowerCase();
+  if (!target?.user) return { ok: false, error: 'Usuario no encontrado' };
+
+  // La administración principal no se toca desde acá: si no, cualquier admin puede
+  // apoderarse de la cuenta dueña simplemente cambiándole la contraseña.
+  const yo = await getProfile();
+  if (email === ADMIN_PROTEGIDO && yo?.id !== parsed.data.userId) {
+    return { ok: false, error: 'La administración principal cambia su contraseña desde su propio perfil.' };
+  }
+
+  // Cuentas de Google: no tienen contraseña nuestra. Ponerle una crearía una
+  // segunda vía de acceso que la persona no pidió ni conoce.
+  const identidades = target.user.identities ?? [];
+  if (identidades.length > 0 && !identidades.some((i) => i.provider === 'email')) {
+    return {
+      ok: false,
+      error: 'Esta cuenta entra con Google: no tiene contraseña. Tiene que recuperar su cuenta de Google.',
+    };
+  }
+
   const { error } = await admin.auth.admin.updateUserById(parsed.data.userId, { password: parsed.data.password });
   if (error) return { ok: false, error: 'No pudimos cambiar la contraseña' };
-  await audit('set_password', 'auth.users', parsed.data.userId, null, { changed: true });
+  await audit('set_password', 'auth.users', parsed.data.userId, null, { changed: true, email });
+  revalidatePath('/admin/usuarios');
   return { ok: true };
 }
 
