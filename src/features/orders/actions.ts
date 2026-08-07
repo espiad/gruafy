@@ -31,6 +31,13 @@ export async function createOrder(input: CreateOrderInput): Promise<ActionResult
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'No autenticado' };
 
+  // Una moto tiene dos ruedas. El wizard ya limita el selector, pero la validación
+  // real va acá: de lo contrario se puede mandar 4 por la API y cotizar dos dollys
+  // sobre un vehículo que solo puede necesitar uno.
+  if (data.conditions?.vehicle_type === 'moto' && (data.wheels_blocked ?? 0) > 2) {
+    return { ok: false, error: 'Una moto tiene 2 ruedas: revisá cuántas no giran.' };
+  }
+
   // Un cliente no puede tener dos auxilios en curso a la vez (evita duplicar el
   // pedido por doble toque / dos pestañas, y con eso doble grúa y doble cobro).
   const ACTIVE_STATES: import('@/types/database').OrderStateDb[] = [

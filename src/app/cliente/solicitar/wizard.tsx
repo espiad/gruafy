@@ -95,6 +95,20 @@ export function SolicitarWizard({
       setDollys(0);
     }
   }
+  // Ruedas que puede tener trabadas según el vehículo.
+  const maxRuedas = vType === 'moto' ? 2 : 4;
+
+  /**
+   * Al cambiar de auto a moto hay que recortar la cantidad de ruedas trabadas: si
+   * no, quedaba un "4" elegido con el selector ya mostrando solo 1 y 2, y el
+   * presupuesto seguía cobrando dos dollys.
+   */
+  function cambiarTipo(t: VehicleType) {
+    setVType(t);
+    const tope = t === 'moto' ? 2 : 4;
+    if (wheels > tope) setBlockedCount(tope);
+  }
+
   function setBlockedCount(n: number) {
     setWheels(n);
     setDollys(n <= 0 ? 0 : n <= 2 ? 1 : 2);
@@ -252,7 +266,7 @@ export function SolicitarWizard({
                       <button
                         key={t.key}
                         type="button"
-                        onClick={() => setVType(t.key)}
+                        onClick={() => cambiarTipo(t.key)}
                         className={`flex h-14 items-center justify-center gap-2 rounded-xl border text-sm font-semibold ${
                           vType === t.key ? 'border-brand-orange bg-brand-orange/10 text-brand-green' : 'border-input text-muted-foreground'
                         }`}
@@ -427,7 +441,9 @@ export function SolicitarWizard({
                 <div className="space-y-2 rounded-xl border border-brand-orange/40 bg-brand-orange/5 p-3">
                   <p className="text-sm font-medium">¿Cuántas ruedas no giran?</p>
                   <div className="flex gap-2">
-                    {[1, 2, 3, 4].map((n) => (
+                    {/* Una moto tiene DOS ruedas: ofrecer 3 y 4 era un absurdo que
+                        además cotizaba dollys de más. */}
+                    {[1, 2, 3, 4].slice(0, maxRuedas).map((n) => (
                       <button
                         key={n}
                         type="button"
