@@ -19,6 +19,13 @@ export default async function OnboardingPage() {
   // Si ya existe la cuenta, el alta continúa en estado-solicitud (docs + envío).
   if (provider) redirect('/proveedor/estado-solicitud');
 
+  // Datos que el dueño ya cargó al registrarse: los usamos para precargar y no
+  // pedir dos veces lo mismo (nombre, teléfono, email).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const ownerName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="font-display text-2xl">Alta de tu grúa</h1>
@@ -27,7 +34,11 @@ export default async function OnboardingPage() {
         revisión. Una cuenta = una grúa habilitada.
       </p>
       <div className="mt-6">
-        <OnboardingForm />
+        <OnboardingForm
+          ownerName={ownerName}
+          ownerPhone={profile.phone ?? ''}
+          ownerEmail={user?.email ?? ''}
+        />
       </div>
     </div>
   );

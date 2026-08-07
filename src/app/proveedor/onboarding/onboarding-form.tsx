@@ -11,7 +11,15 @@ import { createProviderAccount } from '@/features/providers/actions';
 import { isValidCuit, formatCuitInput, isValidPatente, normalizePatente, isValidDni } from '@/lib/validation/argentina';
 import { cn } from '@/lib/utils';
 
-export function OnboardingForm() {
+export function OnboardingForm({
+  ownerName,
+  ownerPhone,
+  ownerEmail,
+}: {
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail: string;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -19,17 +27,28 @@ export function OnboardingForm() {
 
   const [legalName, setLegalName] = useState('');
   const [cuit, setCuit] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  // El teléfono de contacto arranca con el que el dueño ya cargó al registrarse:
+  // es el número al que lo llaman clientes y soporte. Editable por si usa otra línea.
+  const [phone, setPhone] = useState(ownerPhone);
   const [patente, setPatente] = useState('');
   const [year, setYear] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [capacity, setCapacity] = useState('');
-  // Conductor dueño (base)
-  const [driverName, setDriverName] = useState('');
+  // Conductor. Por defecto el dueño es el conductor (el caso más común), así que
+  // precargamos su nombre y teléfono y solo pedimos el DNI, que es el dato nuevo.
+  const [soyElConductor, setSoyElConductor] = useState(true);
+  const [driverName, setDriverName] = useState(ownerName);
   const [driverDni, setDriverDni] = useState('');
-  const [driverPhone, setDriverPhone] = useState('');
+  const [driverPhone, setDriverPhone] = useState(ownerPhone);
+
+  /** Al marcar/desmarcar "soy yo", precargamos o limpiamos los datos del conductor. */
+  function toggleSoyConductor(mine: boolean) {
+    setSoyElConductor(mine);
+    setDriverName(mine ? ownerName : '');
+    setDriverPhone(mine ? ownerPhone : '');
+    setDriverDni('');
+  }
 
   const cuitValid = isValidCuit(cuit);
   const cuitTouched = cuit.replace(/\D/g, '').length >= 11;
@@ -60,7 +79,9 @@ export function OnboardingForm() {
       const res = await createProviderAccount({
         legal_name: legalName.trim(),
         cuit,
-        contact_email: email.trim(),
+        // El email de contacto de la empresa es, por defecto, el de la cuenta. No lo
+        // volvemos a pedir; se edita después en el perfil si hace falta otro.
+        contact_email: ownerEmail.trim(),
         contact_phone: phone.trim(),
         truck: {
           patente: normalizePatente(patente),
@@ -113,13 +134,13 @@ export function OnboardingForm() {
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="contact_phone">Teléfono</Label>
+              <Label htmlFor="contact_phone">Teléfono de contacto</Label>
               <Input id="contact_phone" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" placeholder="11 5555 5555" />
+              <p className="text-xs text-muted-foreground">
+                Es el número al que te van a llamar los clientes y soporte. Precargamos el de tu
+                cuenta; cambialo si usás otra línea.
+              </p>
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="contact_email">Email de contacto (opcional)</Label>
-            <Input id="contact_email" value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="contacto@empresa.com" />
           </div>
         </div>
       )}
@@ -171,12 +192,34 @@ export function OnboardingForm() {
             <h2 className="font-semibold">Conductor</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Cargá al conductor a cargo de esta grúa (podés ser vos). Una vez aprobada la cuenta, vas a
-            poder sumar hasta 4 conductores más desde <strong>Equipo</strong>.
+            Quién va a manejar esta grúa. Una vez aprobada la cuenta, vas a poder sumar hasta 4
+            conductores más desde <strong>Conductores</strong>.
           </p>
+
+          <label className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={soyElConductor}
+              onChange={(e) => toggleSoyConductor(e.target.checked)}
+              className="h-5 w-5 shrink-0 accent-brand-orange"
+            />
+            <span>El conductor de esta grúa <strong>soy yo</strong></span>
+          </label>
+
           <div className="space-y-1.5">
             <Label htmlFor="driver_name">Nombre y apellido</Label>
-            <Input id="driver_name" value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Ej: Carlos Pérez" autoComplete="name" />
+            <Input
+              id="driver_name"
+              value={driverName}
+              onChange={(e) => setDriverName(e.target.value)}
+              placeholder="Ej: Carlos Pérez"
+              autoComplete="name"
+              disabled={soyElConductor}
+              className={soyElConductor ? 'bg-muted text-muted-foreground' : undefined}
+            />
+            {soyElConductor && (
+              <p className="text-xs text-muted-foreground">Tomado de tu cuenta. Destildá &ldquo;soy yo&rdquo; si maneja otra persona.</p>
+            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -193,10 +236,14 @@ export function OnboardingForm() {
                 {dniTouched && dniValid && <CheckCircle2 className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-success" />}
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="driver_phone">Teléfono (opcional)</Label>
-              <Input id="driver_phone" value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} type="tel" placeholder="11 5555 5555" />
-            </div>
+            {/* El teléfono del conductor solo se pide si es OTRA persona. Si sos vos,
+                ya es el de tu cuenta y no tiene sentido volver a pedirlo. */}
+            {!soyElConductor && (
+              <div className="space-y-1.5">
+                <Label htmlFor="driver_phone">Teléfono del conductor</Label>
+                <Input id="driver_phone" value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} type="tel" placeholder="11 5555 5555" />
+              </div>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">La licencia del conductor se sube en el paso de documentos.</p>
         </div>
