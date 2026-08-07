@@ -431,7 +431,27 @@ export async function refundPayment(paymentId: string, reason: string, confirm: 
   if (refund) {
     await admin.from('refunds').update({ status: processed ? 'processed' : 'failed' }).eq('id', refund.id);
   }
-  await admin.from('payments').update({ status: processed ? 'refunded' : payment.status }).eq('id', paymentId);
+  // La ÚNICA defensa contra el doble reembolso es que el pago deje de estar
+  // 'approved' (ver el guard de arriba). Si esta escritura fallaba en silencio, el
+  // panel seguía mostrando el botón "Reembolsar" habilitado sobre una plata ya
+  // devuelta, y el segundo intento lo rechazaba Mercado Pago dejando un reembolso
+  // 'failed' de algo que sí se había devuelto.
+  if (processed) {
+    const { data: marcado, error: errPago } = await admin
+      .from('payments')
+      .update({ status: 'refunded' })
+      .eq('id', paymentId)
+      .eq('status', 'approved')
+      .select('id');
+    if (errPago || !marcado || marcado.length === 0) {
+      return {
+        ok: false,
+        error:
+          'Mercado Pago devolvió la plata, pero no pudimos registrarlo acá. NO lo reembolses de nuevo: ' +
+          `verificá el pago ${paymentId} en Mercado Pago y avisale a soporte técnico.`,
+      };
+    }
+  }
 
   // El estado de la orden solo se mueve si el servicio NO se prestó. Reembolsar el
   // anticipo de un servicio ya cumplido no lo "des-completa": eso borraría que el
