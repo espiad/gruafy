@@ -24,7 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const name = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Admin';
   return (
-    <AppShell nav={NAV} role="Administración" userName={name}>
+    <AppShell nav={NAV} role="Administración" userName={name} mobileMenu="drawer">
       {children}
     </AppShell>
   );

@@ -4,16 +4,22 @@ import { signOutAction } from '@/features/orders/actions';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { NavLinks, type NavItem } from './nav-links';
+import { AppMobileDrawer } from './app-mobile-drawer';
 
 interface Props {
   nav: NavItem[];
   role: string;
   userName?: string | null;
   children: React.ReactNode;
+  /**
+   * Nav mobile: 'bottom' (barra inferior, bien para 4-5 ítems) o 'drawer' (menú
+   * hamburguesa, para áreas con muchas secciones como el admin).
+   */
+  mobileMenu?: 'bottom' | 'drawer';
 }
 
-/** Layout de las áreas privadas: sidebar en desktop, barra inferior en mobile. */
-export function AppShell({ nav, role, userName, children }: Props) {
+/** Layout de las áreas privadas: sidebar en desktop, barra inferior o menú en mobile. */
+export function AppShell({ nav, role, userName, children, mobileMenu = 'bottom' }: Props) {
   return (
     <div className="flex min-h-dvh flex-col bg-muted/30 md:flex-row">
       {/* Sidebar desktop */}
@@ -40,21 +46,27 @@ export function AppShell({ nav, role, userName, children }: Props) {
         <Link href="/" className="focus-ring rounded-md">
           <Logo variant="green" />
         </Link>
-        <form action={signOutAction}>
-          <Button type="submit" variant="ghost" size="icon" aria-label="Cerrar sesión">
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </form>
+        {mobileMenu === 'drawer' ? (
+          <AppMobileDrawer nav={nav} role={role} userName={userName} />
+        ) : (
+          <form action={signOutAction}>
+            <Button type="submit" variant="ghost" size="icon" aria-label="Cerrar sesión">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </form>
+        )}
       </header>
 
-      <main className="flex-1 pb-24 md:pb-0">
+      <main className={`flex-1 ${mobileMenu === 'drawer' ? '' : 'pb-24'} md:pb-0`}>
         <div className="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-10">{children}</div>
       </main>
 
-      {/* Bottom nav mobile */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card md:hidden">
-        <NavLinks items={nav} variant="bottom" className="flex justify-around p-1" />
-      </nav>
+      {/* Barra inferior mobile: solo cuando NO usamos el menú hamburguesa. */}
+      {mobileMenu === 'bottom' && (
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card md:hidden">
+          <NavLinks items={nav} variant="bottom" className="flex justify-around p-1" />
+        </nav>
+      )}
     </div>
   );
 }
