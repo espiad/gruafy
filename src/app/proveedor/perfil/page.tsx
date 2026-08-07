@@ -5,6 +5,8 @@ import { getProfile } from '@/lib/auth/session';
 import { ProviderReviews } from '@/features/reviews/provider-reviews';
 import { CompanyEditor, TruckEditor, TrucksHeading } from '@/features/providers/provider-profile-editor';
 import { DeleteAccount } from '@/features/account/delete-account';
+import { ChangePassword } from '@/features/account/change-password';
+import { tieneContrasena } from '@/features/account/password-actions';
 
 export const metadata: Metadata = { title: 'Perfil de la grúa' };
 
@@ -58,6 +60,8 @@ export default async function ProveedorPerfil() {
       </div>
 
       <ProviderReviews providerId={provider.id} title="Lo que dicen tus clientes" />
+
+      {(await tieneContrasena()) && <ChangePassword />}
 
       <DeleteAccount />
     </div>

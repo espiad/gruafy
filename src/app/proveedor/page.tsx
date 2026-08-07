@@ -109,8 +109,11 @@ export default async function ProveedorPanel() {
       {/* Beep + vibración + parpadeo del título cuando entra un pedido nuevo. */}
       {!active && provider.is_available && <NewOfferAlert count={offers?.length ?? 0} />}
 
-      <AppNudges />
-      <HowTo role="gruero" />
+      {/* En fila y con separación: antes se leían como un solo botón. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <AppNudges />
+        <HowTo role="gruero" />
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl">{provider.legal_name}</h1>

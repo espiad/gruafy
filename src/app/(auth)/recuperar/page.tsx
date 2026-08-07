@@ -9,7 +9,8 @@ export default function RecuperarPage() {
       <div>
         <h1 className="font-display text-2xl">¿Olvidaste tu contraseña?</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Poné tu email y te mandamos un enlace para crear una nueva.
+          Depende de cómo hayas creado la cuenta. Decinos cuál es tu caso y te llevamos al camino
+          que corresponde.
         </p>
       </div>
       <RecoverForm />

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
+import { signOutAction } from '@/features/orders/actions';
 
 interface Item {
   href: string;
@@ -16,7 +17,14 @@ interface Item {
  * accesos de cuenta (Ingresar / Registrate) quedan SIEMPRE visibles fuera del
  * menú, porque son las acciones que más se tocan.
  */
-export function MobileNav({ items }: { items: Item[] }) {
+export function MobileNav({
+  items,
+  sesion,
+}: {
+  items: Item[];
+  /** Accesos de cuenta cuando hay sesión abierta. */
+  sesion?: { panelHref: string; nombre: string } | null;
+}) {
   const [open, setOpen] = useState(false);
   const [montado, setMontado] = useState(false);
 
@@ -87,6 +95,29 @@ export function MobileNav({ items }: { items: Item[] }) {
             </li>
           ))}
         </ul>
+
+        {/* Con sesión abierta, el menú tiene que dejar salir. Antes solo listaba las
+            secciones de la landing: había que entrar al panel para poder cerrarla. */}
+        {sesion && (
+          <div className="mt-auto border-t border-border pt-4">
+            <p className="px-3 text-xs uppercase tracking-wide text-muted-foreground">Tu cuenta</p>
+            <Link
+              href={sesion.panelHref}
+              onClick={() => setOpen(false)}
+              className="focus-ring mt-1 flex items-center gap-2 rounded-lg px-3 py-3 text-base font-medium text-brand-green hover:bg-brand-orange/10"
+            >
+              <LayoutDashboard className="h-4 w-4" /> Ir a mi panel
+            </Link>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="focus-ring flex w-full items-center gap-2 rounded-lg px-3 py-3 text-left text-base font-medium text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="h-4 w-4" /> Cerrar sesión
+              </button>
+            </form>
+          </div>
+        )}
       </nav>
     </div>
   );

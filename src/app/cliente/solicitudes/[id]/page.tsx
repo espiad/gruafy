@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { PayButton } from '@/features/payments/pay-button';
 import { SimulatePaymentButton } from '@/features/payments/simulate-payment-button';
-import { serverEnv } from '@/lib/env';
+import { serverEnv, publicEnv } from '@/lib/env';
 import { QuoteBreakdownCard } from '@/features/pricing/quote-breakdown';
 import { TrackingMap } from '@/components/maps/tracking-map-lazy';
 import { ReviewForm } from '@/features/reviews/review-form';
@@ -392,6 +392,32 @@ export default async function SolicitudDetalle({
               <p className="mt-1 text-base">{order.cancellation_reason}</p>
             </div>
           )}
+          {/* Si ya había pagado y la baja no fue suya, lo que necesita saber es qué
+              pasa con su plata y con su auto. Antes solo veía "la solicitud fue
+              cancelada" y quedaba sin saber si había perdido el anticipo. */}
+          {order.amount_upfront != null &&
+            (state === 'cancelled_by_admin' || state === 'cancelled_by_provider') && (
+              <div className="mx-auto mt-4 max-w-md rounded-xl border border-brand-green/30 bg-brand-green/5 p-4 text-left">
+                <p className="text-sm font-semibold">Qué pasa ahora</p>
+                <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground">
+                  <li>· Te devolvemos el anticipo de {formatARS(order.amount_upfront)} completo.</li>
+                  <li>· Te vamos a llamar de soporte para ver cómo seguís con tu vehículo.</li>
+                  <li>· No tenés que pagarle nada al gruero.</li>
+                </ul>
+                {publicEnv.whatsapp && (
+                  <a
+                    href={`https://wa.me/${publicEnv.whatsapp}?text=${encodeURIComponent(
+                      `Hola, me cancelaron el servicio ${order.id.slice(0, 8)} y necesito ayuda.`,
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="focus-ring mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 py-2 text-sm font-semibold text-white"
+                  >
+                    <MessageCircle className="h-4 w-4" /> Escribinos ahora
+                  </a>
+                )}
+              </div>
+            )}
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Button asChild>
               <Link href="/cliente/solicitar">Pedir una grúa</Link>

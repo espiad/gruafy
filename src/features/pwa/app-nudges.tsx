@@ -146,11 +146,10 @@ export function AppNudges() {
     const canReopen = (notifState === 'default' && notifDismissed) || (!standalone && installDismissed && (deferred !== null || isIOS()));
     if (!canReopen) return null;
     return (
-      <button
-        onClick={reopen}
-        className="focus-ring inline-flex items-center gap-1.5 rounded-md text-xs text-muted-foreground hover:text-brand-green"
-      >
-        <Bell className="h-3.5 w-3.5" /> Activar avisos / instalar app
+      // Chip con borde propio: pegado al de al lado, los dos enlaces sueltos se
+      // leían como un único botón larguísimo.
+      <button onClick={reopen} className="focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-brand-green/40 hover:text-brand-green">
+        <Bell className="h-3.5 w-3.5" /> Activar avisos
       </button>
     );
   }

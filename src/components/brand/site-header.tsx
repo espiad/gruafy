@@ -54,7 +54,17 @@ export async function SiteHeader() {
             </>
           )}
           {/* Navegación de la landing: en mobile se pliega en la hamburguesa. */}
-          <MobileNav items={NAV} />
+          <MobileNav
+            items={NAV}
+            sesion={
+              profile
+                ? {
+                    panelHref: homeForRole(profile.role),
+                    nombre: [profile.first_name, profile.last_name].filter(Boolean).join(' '),
+                  }
+                : null
+            }
+          />
         </div>
       </div>
     </header>

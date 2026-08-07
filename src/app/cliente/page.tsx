@@ -64,8 +64,10 @@ export default async function ClienteHome() {
   // ---- Dashboard para usuarios que ya usaron gruafy ----
   return (
     <div className="space-y-8">
-      <AppNudges />
-      <HowTo role="cliente" />
+      <div className="flex flex-wrap items-center gap-2">
+        <AppNudges />
+        <HowTo role="cliente" />
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl">Hola{firstName ? `, ${firstName}` : ' de nuevo'}</h1>

@@ -2,117 +2,126 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Loader2, AlertCircle, MailCheck, MessageCircle } from 'lucide-react';
+import { MessageCircle, KeyRound, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { createClient } from '@/lib/supabase/client';
-import { hasSupabaseConfig, publicEnv } from '@/lib/env';
+import { publicEnv } from '@/lib/env';
 
+/**
+ * Recuperación de contraseña.
+ *
+ * A propósito NO manda un mail. Todavía no hay dominio propio configurado para el
+ * correo saliente, así que el enlace de restablecimiento no llega: la pantalla
+ * anterior decía "te llegó un enlace" y dejaba a la persona esperando algo que
+ * nunca iba a aparecer. Prometer un mail que no sale es peor que no ofrecerlo.
+ *
+ * Mientras tanto, dos caminos reales según cómo se creó la cuenta:
+ *  - Google: no hay contraseña nuestra que recuperar; se resuelve en Google.
+ *  - Mail y contraseña: soporte entrega una temporal y la persona la cambia desde
+ *    su perfil (ver `ChangePassword`).
+ *
+ * PARA REACTIVAR EL MAIL: configurar SMTP propio en Supabase (Auth → SMTP) y
+ * volver a llamar a `supabase.auth.resetPasswordForEmail(email, { redirectTo:
+ * '/auth/callback?next=/actualizar-clave' })` desde acá.
+ */
 export function RecoverForm() {
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [emailEnviado, setEmailEnviado] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [via, setVia] = useState<'google' | 'manual' | null>(null);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    if (!hasSupabaseConfig) return setError('El acceso todavía no está configurado.');
-    const email = String(new FormData(e.currentTarget).get('email'));
-    setEmailEnviado(email);
-    setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/actualizar-clave`,
-    });
-    setLoading(false);
-    // No revelamos si el email existe o no (buena práctica): siempre "enviado".
-    if (error && /rate|over_email_send/i.test(error.message)) {
-      return setError(
-        'El servicio de emails llegó a su límite por hora. Probá más tarde o configurá un email propio (SMTP) en Supabase.',
-      );
-    }
-    setSent(true);
+  if (via === null) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium">¿Cómo creaste tu cuenta?</p>
+        <button
+          onClick={() => setVia('google')}
+          className="focus-ring w-full rounded-xl border border-input bg-card p-4 text-left hover:border-brand-green/50"
+        >
+          <p className="font-medium">Entré con Google</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Usé el botón &ldquo;Continuar con Google&rdquo;.
+          </p>
+        </button>
+        <button
+          onClick={() => setVia('manual')}
+          className="focus-ring w-full rounded-xl border border-input bg-card p-4 text-left hover:border-brand-green/50"
+        >
+          <p className="font-medium">Me registré con mail y contraseña</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">Elegí una contraseña al registrarme.</p>
+        </button>
+        <p className="pt-2 text-center text-sm text-muted-foreground">
+          <Link href="/ingresar" className="font-medium text-brand-green hover:underline">
+            Volver a ingresar
+          </Link>
+        </p>
+      </div>
+    );
   }
 
-  if (sent) {
+  const volver = (
+    <button
+      onClick={() => setVia(null)}
+      className="focus-ring inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground"
+    >
+      <ArrowLeft className="h-4 w-4" /> Volver
+    </button>
+  );
+
+  if (via === 'google') {
     return (
       <div className="space-y-4">
-        <div className="flex items-start gap-3 rounded-xl border border-success/40 bg-success/5 p-4">
-          <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" />
-          <div className="text-sm">
-            <p>
-              Si <strong>{emailEnviado}</strong> tiene una cuenta, te va a llegar un enlace para
-              restablecer la contraseña.
-            </p>
-            <p className="mt-1 text-muted-foreground">
-              Puede tardar unos minutos. Revisá también el correo no deseado.
-            </p>
-          </div>
+        <div className="rounded-xl border border-brand-green/40 bg-brand-green/5 p-4">
+          <p className="font-medium">Tu cuenta no tiene contraseña propia</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Al entrar con Google, quien te identifica es Google: nosotros nunca guardamos una
+            contraseña tuya. Si no podés entrar, es la contraseña de <strong>tu cuenta de Google</strong>{' '}
+            la que hay que recuperar.
+          </p>
         </div>
-
-        {/* Antes esta pantalla era un callejón sin salida: si el mail no llegaba
-            —dominio mal configurado, typo en la dirección, filtro del proveedor—
-            no había forma de reintentar ni a quién pedirle ayuda. */}
-        <div className="rounded-xl border border-border p-4">
-          <p className="text-sm font-medium">¿No te llega?</p>
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            <li>Fijate que la dirección esté bien escrita.</li>
-            <li>Si entraste con Google, no tenés contraseña: ingresá con el botón de Google.</li>
-          </ul>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSent(false);
-                setError(null);
-              }}
-            >
-              Probar con otro email
-            </Button>
-            {publicEnv.whatsapp && (
-              <a
-                href={`https://wa.me/${publicEnv.whatsapp}?text=${encodeURIComponent(
-                  `Hola, no me llega el mail para recuperar la contraseña de gruafy (${emailEnviado}).`,
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="focus-ring inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 py-2 text-sm font-semibold text-white"
-              >
-                <MessageCircle className="h-4 w-4" /> Escribinos y te ayudamos
-              </a>
-            )}
-          </div>
-        </div>
-
-        <Button asChild variant="ghost" className="w-full">
-          <Link href="/ingresar">Volver a ingresar</Link>
+        <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
+          <li>Recuperá tu cuenta de Google desde el sitio de Google.</li>
+          <li>Volvé acá y tocá &ldquo;Continuar con Google&rdquo;.</li>
+        </ol>
+        <Button asChild className="w-full" size="lg">
+          <Link href="/ingresar">Ir a ingresar con Google</Link>
         </Button>
+        {volver}
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" required autoComplete="email" placeholder="vos@email.com" />
-      </div>
-      {error && (
-        <p className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+    <div className="space-y-4">
+      <div className="rounded-xl border border-warning/50 bg-warning/10 p-4">
+        <p className="font-medium">Por ahora no mandamos mails automáticos</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Todavía no está configurado el correo saliente, así que{' '}
+          <strong>no te va a llegar ningún enlace</strong>. Preferimos decírtelo antes que dejarte
+          esperando.
         </p>
+      </div>
+
+      <div className="rounded-xl border border-border p-4">
+        <p className="flex items-center gap-2 font-medium">
+          <KeyRound className="h-4 w-4 text-muted-foreground" /> Cómo la recuperás
+        </p>
+        <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
+          <li>Escribinos por WhatsApp con el mail de tu cuenta.</li>
+          <li>Verificamos que seas vos y te damos una contraseña temporal.</li>
+          <li>Entrás con esa contraseña y la cambiás por la tuya desde <strong>Mi perfil</strong>.</li>
+        </ol>
+      </div>
+
+      {publicEnv.whatsapp && (
+        <a
+          href={`https://wa.me/${publicEnv.whatsapp}?text=${encodeURIComponent(
+            'Hola, no puedo entrar a gruafy y necesito recuperar mi contraseña. Mi mail es: ',
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="focus-ring flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-5 py-3.5 text-base font-semibold text-white"
+        >
+          <MessageCircle className="h-5 w-5" /> Escribinos por WhatsApp
+        </a>
       )}
-      <Button type="submit" className="w-full" size="lg" disabled={loading}>
-        {loading && <Loader2 className="h-4 w-4 animate-spin" />} Enviar enlace
-      </Button>
-      <p className="text-center text-sm text-muted-foreground">
-        <Link href="/ingresar" className="font-medium text-brand-green hover:underline">
-          Volver a ingresar
-        </Link>
-      </p>
-    </form>
+      {volver}
+    </div>
   );
 }

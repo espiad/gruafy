@@ -2,11 +2,14 @@ import type { Metadata } from 'next';
 import { getProfile } from '@/lib/auth/session';
 import { ProfileForm } from './profile-form';
 import { DeleteAccount } from '@/features/account/delete-account';
+import { ChangePassword } from '@/features/account/change-password';
+import { tieneContrasena } from '@/features/account/password-actions';
 
 export const metadata: Metadata = { title: 'Mi perfil' };
 
 export default async function PerfilPage() {
   const profile = await getProfile();
+  const conContrasena = await tieneContrasena();
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <h1 className="font-display text-2xl">Mi perfil</h1>
@@ -17,6 +20,7 @@ export default async function PerfilPage() {
           phone: profile?.phone ?? '',
         }}
       />
+      {conContrasena && <ChangePassword />}
       <DeleteAccount />
     </div>
   );

@@ -3,6 +3,8 @@ import { getPlatformSettings } from '@/features/pricing/settings';
 import { SettingsForm } from '@/features/admin/settings-form';
 import { AdicionalesEditor } from '@/features/admin/adicionales-editor';
 import { paymentsMode, isDemoMode, publicEnv, hasSupabaseConfig } from '@/lib/env';
+import { ChangePassword } from '@/features/account/change-password';
+import { tieneContrasena } from '@/features/account/password-actions';
 
 export const metadata: Metadata = { title: 'Configuración' };
 
@@ -44,6 +46,13 @@ export default async function AdminConfiguracion() {
           <Flag label="DEMO_MODE desactivado" ok={!isDemoMode} />
         </ul>
       </section>
+
+      {/* El admin también tiene que poder cambiar su propia contraseña. */}
+      {(await tieneContrasena()) && (
+        <section className="mx-auto max-w-lg">
+          <ChangePassword />
+        </section>
+      )}
     </div>
   );
 }

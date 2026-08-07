@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Loader2, MapPin, ArrowRight, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { publicEnv } from '@/lib/env';
+import { AbandonService } from './abandon-service';
 import { advanceOrderState } from './actions';
 import { haversineMeters } from '@/lib/geo/distance';
 import { formatDistance } from '@/lib/format';
@@ -226,6 +227,10 @@ export function ServiceActionsPanel({
         Próximo estado: {STATE_LABELS[next.to]}
       </p>
       {error && <p className="text-center text-sm text-destructive">{error}</p>}
+
+      {/* Salida para cuando algo sale mal a mitad del viaje. Solo con el servicio ya
+          arrancado: antes de eso el gruero simplemente no acepta la oferta. */}
+      {state !== 'paid' && <AbandonService orderId={orderId} />}
     </div>
   );
 }
