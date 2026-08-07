@@ -88,12 +88,14 @@ export function DriverPhotoUpload({
   return (
     <>
       {/* input oculto: se dispara desde el instructivo */}
-      {/* Sin `capture`: así el celular deja elegir entre sacar la foto en el momento,
-          la galería o un archivo. Con capture="user" forzaba la cámara frontal. */}
+      {/* `capture="user"`: cámara en vivo, frontal por defecto (el cliente tiene que
+          reconocer a quién lo asiste, así que NO vale una foto de la galería). En la
+          mayoría de los celulares se puede dar vuelta la cámara desde el visor. */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
+        capture="user"
         className="sr-only"
         onChange={(e) => {
           const f = e.target.files?.[0];
