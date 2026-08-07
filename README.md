@@ -1,24 +1,19 @@
 # gruafy
 
-Plataforma web de **asistencia vial on-demand** (acarreo con grúa) que conecta conductores varados
-con grúas verificadas en AMBA. Como Uber, pero con grúas: pedís, rastreás y resolvés, con precio
-claro antes de aceptar y sin letra chica.
+Plataforma web de asistencia vial on-demand (acarreo con grúa) para AMBA. Conecta conductores
+varados con grúas verificadas: pedís, rastreás en vivo y pagás con precio claro antes de aceptar.
 
-> Primero una grúa acepta el viaje; recién ahí el cliente paga por Mercado Pago el **anticipo del 20%**
-> de gruafy. El saldo del servicio y los adicionales se pagan directo al gruero al finalizar.
+**Modelo de plata:** primero una grúa acepta el viaje; recién ahí el cliente paga por Mercado Pago
+el anticipo de gruafy (comisión del 20% + fee de MP). El saldo del servicio y los adicionales se le
+pagan directo al gruero al finalizar, en efectivo o transferencia.
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript strict · Tailwind (tokens de marca) · Radix/shadcn ·
-Supabase (Postgres, Auth, Storage privado, Realtime, RLS) · Mercado Pago Checkout Pro ·
-MapLibre GL + Geoapify · Zod · React Hook Form · Vitest · Playwright · Vercel.
+Next.js 15 (App Router) · TypeScript strict · Tailwind con tokens de marca · Radix/shadcn ·
+Supabase (Postgres, Auth por cookies SSR, Storage privado, Realtime, RLS) · Mercado Pago
+Checkout Pro · MapLibre GL + Geoapify · Web Push (VAPID) · Zod · Vitest · Vercel.
 
-## Requisitos
-
-- Node.js 20+ y npm.
-- Cuenta de Supabase, Mercado Pago (test y producción) y Geoapify. Ver `docs/PENDIENTES_REALES.md`.
-
-## Puesta en marcha (local)
+## Puesta en marcha
 
 ```bash
 npm install
@@ -26,59 +21,95 @@ cp .env.example .env.local     # completá tus credenciales
 npm run dev                    # http://localhost:3000
 ```
 
-La landing, `/como-funciona`, `/ayuda` y el `/simulador` funcionan sin credenciales
-(el simulador usa Geoapify si está configurado, o una estimación por distancia si no).
+La landing, `/como-funciona`, `/ayuda` y el `/simulador` andan sin credenciales.
 
-### Base de datos (Supabase)
+### Base de datos
 
 ```bash
-# Con Supabase CLI y un proyecto creado:
 supabase link --project-ref <SUPABASE_PROJECT_REF>
-supabase db push               # aplica supabase/migrations/*
-# Cargar seed base (settings + ayuda):
+supabase db push                       # aplica supabase/migrations/*
 psql "$DATABASE_URL" -f supabase/seed.sql
 ```
 
-Antes de correr las migraciones, configurá el email de admin en el proyecto:
+Antes de las migraciones, seteá el email de admin y creá un bucket privado `documents`:
 
 ```sql
 alter database postgres set app.admin_email = 'tu-email@dominio.com';
 ```
 
-Creá un bucket **privado** llamado `documents` para la documentación de proveedores.
+### Scripts
 
-## Scripts
+`npm run dev` · `build` (bloquea si falta config productiva) · `typecheck` · `lint` · `test` ·
+`db:push`.
 
-| Comando | Qué hace |
-|---------|----------|
-| `npm run dev` | Servidor de desarrollo. |
-| `npm run build` | Build de producción (bloquea si falta config productiva). |
-| `npm run typecheck` | `tsc --noEmit`. |
-| `npm run lint` | ESLint. |
-| `npm run test` | Vitest (unit + integración). |
-| `npm run test:e2e` | Playwright (E2E). |
-| `npm run db:push` | Aplica migraciones. |
+## Arquitectura
 
-## Estructura
+- `src/app/` — áreas por rol: `(public)` y `(auth)` abiertas, y las privadas `cliente`,
+  `proveedor`, `admin`. Cada área privada tiene su layout que exige sesión, rol y cuenta activa.
+- `src/features/*` — dominios: `orders`, `providers`, `payments`, `dispatch`, `pricing`,
+  `reviews`, `tracking`, `admin`, `account`, `auth`.
+- `src/lib/*` — integraciones: `supabase` (clientes server/browser/admin), `mercadopago`,
+  `geoapify`, `push`, `env`.
 
-Ver `docs/IMPLEMENTATION_PLAN.md`. Dominios en `src/features/*`, integraciones en `src/lib/*`,
-áreas de la app en `src/app/(public|auth)`, `cliente`, `proveedor`, `admin`.
+Los tres roles son `client`, `provider_owner` y `admin`. El email de `ADMIN_EMAIL` queda como admin
+al registrarse.
 
-## Documentación
+## Modelo de datos (tablas centrales)
 
-- `docs/DECISIONES.md` — decisiones y contradicciones resueltas.
-- `docs/MODELO_DATOS.md` — esquema + diagrama.
-- `docs/FLUJOS.md` — flujos B2C, B2B, pagos y admin.
-- `docs/ESTADO.md` — qué está hecho y qué falta.
-- `docs/PENDIENTES_REALES.md` — credenciales y acciones que requieren al propietario.
+- `profiles` — un registro por usuario de Auth, con `role` y `status` (active/suspended/deleted).
+- `client_profiles`, `vehicles` — datos del cliente B2C y sus autos/motos.
+- `provider_accounts`, `provider_members`, `tow_trucks`, `provider_documents` — la grúa, sus
+  conductores, sus unidades y la documentación (en el bucket privado).
+- `service_orders` — el pedido y su `state`; guarda el `pricing` congelado al crearse.
+- `provider_offers` — la oferta a cada grúa, con `unique (order_id, provider_id)`.
+- `payments`, `refunds` — anticipos y devoluciones de Mercado Pago.
+- `service_extras` — adicionales (peaje, espera, etc.) cargados durante el servicio.
+- `order_events`, `order_transitions`, `notifications`, `admin_audit_logs`, `platform_settings`.
+
+## Máquina de estados
+
+El ciclo feliz: `searching_provider → awaiting_payment → paid → provider_en_route →
+provider_arrived → vehicle_loaded → in_transit → completion_pending → completed`.
+
+Estados de cierre: `no_provider`, `payment_expired`, `cancelled_by_client/provider/admin`,
+`refund_pending`, `refunded`, `disputed`.
+
+Las transiciones válidas viven en la tabla `order_transitions` y las hace cumplir el trigger
+`enforce_order_update`: cualquier cambio de estado no declarado se rechaza a nivel base, incluso con
+service role. La asignación de la grúa es atómica: el RPC `accept_offer` bloquea la fila del pedido
+(`for update`) y verifica que quien acepta sea miembro de esa grúa, así dos grúas que aceptan a la
+vez no producen doble asignación.
+
+## Precios
+
+El motor está en `src/features/pricing`. El presupuesto sale de: movida base + km recorridos +
+dollys (si hay ruedas trabadas). Sobre ese subtotal, gruafy cobra una comisión (20% por defecto)
+como anticipo; el fee de Mercado Pago y su IVA se suman al anticipo. Los parámetros los edita el
+admin desde Configuración y quedan versionados; el `pricing` de cada orden se congela al crearse, así
+que cambiar los parámetros no afecta pedidos ya tomados.
+
+## Seguridad
+
+Autorización en dos capas: RLS en Postgres como base, más chequeos en cada server action (usuario
+autenticado + propiedad del recurso, o admin). El service role solo se usa en el servidor para
+operaciones controladas (webhook de pago, asignación, acciones de admin). Los adicionales tienen un
+trigger propio (`enforce_extra_integrity`) que impide cargar montos fuera del catálogo o sobre un
+servicio cerrado. El webhook de Mercado Pago valida la firma HMAC y falla cerrado si falta el
+secreto; el cron de barrido exige `CRON_SECRET`.
+
+## Mercado Pago
+
+Checkout Pro con `PAYMENTS_MODE` (test/production). El retorno del navegador no confirma el pago: la
+verdad llega por webhook (`/api/payments/webhook`), que reconcilia contra la API de MP. En producción
+el arranque falla si faltan credenciales productivas, datos legales o URL HTTPS (ver `src/lib/env.ts`).
+Para demos sin mover plata hay un pago simulado que el admin enciende desde Configuración.
 
 ## Deploy
 
-Vercel + Supabase + webhook de Mercado Pago. Pasos detallados (a completar) en `docs/DEPLOY.md`.
-`PAYMENTS_MODE=production` exige credenciales productivas y URL HTTPS válida; el arranque falla de
-forma explícita si falta algo (ver `src/lib/env.ts`).
+Vercel + Supabase + webhook de MP apuntando a `https://<dominio>/api/payments/webhook`. Las
+variables de entorno productivas se cargan en Vercel. `.env.example` lista todas las que hacen falta.
 
 ## Marca
 
-`gruafy` se escribe siempre en minúscula. Paleta: naranja `#FF9E00`, verde `#1C3C36`, negro verdoso
-`#001910`, blanco cálido `#F8F7F4`. Tipografías: Zen Dots (identidad) y Poppins (interfaz).
+`gruafy` siempre en minúscula. Naranja `#FF9E00`, verde `#1C3C36`, negro verdoso `#001910`, blanco
+cálido `#F8F7F4`. Tipografías Zen Dots (identidad) y Poppins (interfaz).
