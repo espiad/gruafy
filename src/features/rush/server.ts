@@ -185,6 +185,13 @@ export async function setTicketUrl(url: string): Promise<boolean> {
   return !error && Boolean(data && data.length > 0);
 }
 
+/** Borra todos los eventos. Devuelve false si la base rechazó la operación. */
+export async function resetEvents(): Promise<boolean> {
+  // PostgREST exige un filtro para DELETE: `id > 0` abarca todas las filas.
+  const { error } = await rushDb().from('rush_events').delete().gt('id', 0);
+  return !error;
+}
+
 export async function getStats(r: Rango): Promise<RushStats> {
   const { data, error } = await rushDb().rpc('rush_stats', { p_since: inicioRango(r) });
   if (error) throw new Error(error.message);

@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
+import { ChevronDown } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { LoginForm } from './login-form';
 import { TicketUrlForm } from './ticket-url-form';
-import { rushLogout } from '@/features/rush/actions';
+import { ResetData } from './reset-data';
 import {
   SESSION_COOKIE,
   getStats,
@@ -68,7 +69,7 @@ export default async function RushDashboard({ searchParams }: { searchParams: Pr
     <main className="min-h-dvh bg-[#0a0a0b] text-zinc-100">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:py-10">
         {/* Encabezado */}
-        <header className="flex items-start justify-between gap-4">
+        <header>
           <div>
             <p className="text-[11px] uppercase tracking-[0.25em] text-zinc-500">Analíticas</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">RUSH × Frankia</h1>
@@ -85,11 +86,6 @@ export default async function RushDashboard({ searchParams }: { searchParams: Pr
               </p>
             )}
           </div>
-          <form action={rushLogout}>
-            <button className="rounded-lg border border-zinc-800 px-3 py-1.5 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-200">
-              Salir
-            </button>
-          </form>
         </header>
 
         {/* Filtro de período */}
@@ -115,9 +111,19 @@ export default async function RushDashboard({ searchParams }: { searchParams: Pr
           <Contenido stats={stats} rango={rango} />
         )}
 
-        <div className="mt-3">
-          <TicketUrlForm current={ticketUrl} />
-        </div>
+        {/* Ajustes: plegado a propósito, para que nada se cambie o borre por error. */}
+        <details className="group mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/40">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm text-zinc-400 hover:text-zinc-200 sm:px-5">
+            <span>Ajustes</span>
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="space-y-5 border-t border-zinc-800 px-4 py-4 sm:px-5">
+            <TicketUrlForm current={ticketUrl} />
+            <div className="border-t border-zinc-800 pt-5">
+              <ResetData />
+            </div>
+          </div>
+        </details>
       </div>
     </main>
   );

@@ -13,6 +13,7 @@ import {
   newSessionToken,
   normalizeTicketUrl,
   readTries,
+  resetEvents,
   setTicketUrl,
   writeTries,
 } from './server';
@@ -75,8 +76,15 @@ export async function rushSaveTicketUrl(
   return { ok: true };
 }
 
-export async function rushLogout() {
+/**
+ * Borra TODOS los eventos (visitas y clics) para arrancar de cero. No toca el link
+ * de la preventa. Verifica la sesión adentro: una server action se puede invocar
+ * directo.
+ */
+export async function rushResetData(): Promise<{ ok?: boolean; error?: string }> {
   const jar = await cookies();
-  jar.delete({ name: SESSION_COOKIE, path: COOKIE_PATH });
-  redirect('/rushfrankia');
+  if (!isValidSession(jar.get(SESSION_COOKIE)?.value)) return { error: 'Tu sesión venció. Volvé a entrar.' };
+  if (!(await resetEvents())) return { error: 'No se pudieron eliminar los datos. Probá de nuevo.' };
+  revalidatePath('/rushfrankia');
+  return { ok: true };
 }

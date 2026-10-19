@@ -4,9 +4,9 @@ import { useActionState, useEffect, useState } from 'react';
 import { rushSaveTicketUrl } from '@/features/rush/actions';
 
 /**
- * Link de la preventa. A propósito NO queda a mano: vive en "Ajustes" (plegado) y,
- * aun abierto, se muestra en modo lectura. Para cambiarlo hay que tocar "Cambiar
- * link", así no se edita por error.
+ * Link de la preventa. A propósito NO queda a mano: vive dentro de "Ajustes"
+ * (plegado en la página) y se muestra en modo lectura. Para cambiarlo hay que tocar
+ * "Cambiar link", así no se edita por error.
  */
 export function TicketUrlForm({ current }: { current: string }) {
   const [state, action, pending] = useActionState(rushSaveTicketUrl, null);
@@ -18,13 +18,7 @@ export function TicketUrlForm({ current }: { current: string }) {
   }, [state]);
 
   return (
-    <details className="group rounded-2xl border border-zinc-800 bg-zinc-900/40">
-      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm text-zinc-400 hover:text-zinc-200 sm:px-5">
-        <span>Ajustes</span>
-        <span className="text-xs transition-transform group-open:rotate-180">▾</span>
-      </summary>
-
-      <div className="border-t border-zinc-800 px-4 py-4 sm:px-5">
+      <div>
         <p className="text-sm font-medium">Link de la preventa</p>
         <p className="mt-1 text-xs text-zinc-500">
           A dónde lleva el botón &ldquo;Entrar a la preventa&rdquo;. Vacío = el botón avisa que todavía no
@@ -82,6 +76,5 @@ export function TicketUrlForm({ current }: { current: string }) {
         )}
         {state?.ok && !editando && <p className="mt-2 text-xs text-emerald-400">Guardado.</p>}
       </div>
-    </details>
   );
 }
