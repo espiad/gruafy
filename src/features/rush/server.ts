@@ -19,6 +19,34 @@ const SESSION_DAYS = 7;
 export const MAX_TRIES = 8;
 export const LOCK_MINUTES = 10;
 
+// ── CORS (compartido por los endpoints públicos) ──────────────────────────────
+
+export function allowedOrigins(): string[] {
+  return (process.env.RUSH_LANDING_ORIGIN ?? '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+}
+
+export function originAllowed(origin: string | null): boolean {
+  const allowed = allowedOrigins();
+  return allowed.length === 0 || (origin != null && allowed.includes(origin));
+}
+
+export function corsHeaders(origin: string | null, methods: string): Record<string, string> {
+  const allowed = allowedOrigins();
+  // Sin configurar, se acepta cualquier origen (útil para probar). En producción se
+  // setea RUSH_LANDING_ORIGIN con el dominio de Netlify.
+  const allow = allowed.length === 0 ? '*' : origin && allowed.includes(origin) ? origin : allowed[0]!;
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Methods': methods,
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  };
+}
+
 /** Cliente con service role, sin tipado de gruafy (la tabla es ajena a su esquema). */
 export function rushDb() {
   const url = serverEnv.supabaseUrl();
@@ -120,6 +148,39 @@ export function inicioRango(r: Rango): string {
   if (r === 'all') return '2000-01-01T00:00:00Z';
   const dias = r === '7' ? 6 : 29;
   return `${sumarDias(hoyAR(), -dias)}T03:00:00Z`;
+}
+
+// ── URL de la ticketera (botón de preventa) ───────────────────────────────────
+
+export async function getTicketUrl(): Promise<string> {
+  const { data } = await rushDb().from('rush_config').select('value').eq('key', 'ticket_url').maybeSingle();
+  return (data?.value as string | undefined) ?? '';
+}
+
+/**
+ * Valida la URL antes de guardarla: tiene que ser http(s) y válida. Vacía también
+ * se acepta (deja el botón como "todavía no disponible"). Devuelve la URL limpia
+ * o un mensaje de error.
+ */
+export function normalizeTicketUrl(raw: string): { ok: true; url: string } | { ok: false; error: string } {
+  const v = raw.trim();
+  if (!v) return { ok: true, url: '' };
+  if (v.length > 500) return { ok: false, error: 'La URL es demasiado larga.' };
+  try {
+    const u = new URL(v);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return { ok: false, error: 'Tiene que empezar con https://' };
+    return { ok: true, url: u.toString() };
+  } catch {
+    return { ok: false, error: 'No parece una URL válida. Ejemplo: https://ticketera.com/evento' };
+  }
+}
+
+export async function setTicketUrl(url: string): Promise<boolean> {
+  const { data, error } = await rushDb()
+    .from('rush_config')
+    .upsert({ key: 'ticket_url', value: url, updated_at: new Date().toISOString() })
+    .select('key');
+  return !error && Boolean(data && data.length > 0);
 }
 
 export async function getStats(r: Rango): Promise<RushStats> {

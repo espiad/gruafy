@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { RUSH_EVENTS, rushDb, type RushEvent } from '@/features/rush/server';
+import { RUSH_EVENTS, corsHeaders, originAllowed, rushDb, type RushEvent } from '@/features/rush/server';
 
 /**
  * Ingesta pública de eventos de la landing RUSH × Frankia (Netlify).
@@ -12,38 +12,17 @@ import { RUSH_EVENTS, rushDb, type RushEvent } from '@/features/rush/server';
 
 const MAX_BODY = 512;
 const DEDUP_MS = 2000;
-
-function allowedOrigins(): string[] {
-  return (process.env.RUSH_LANDING_ORIGIN ?? '')
-    .split(',')
-    .map((o) => o.trim().replace(/\/$/, ''))
-    .filter(Boolean);
-}
-
-function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = allowedOrigins();
-  // Sin configurar, se acepta cualquier origen (útil para probar). En producción
-  // conviene setear RUSH_LANDING_ORIGIN con el dominio de Netlify.
-  const allow = allowed.length === 0 ? '*' : origin && allowed.includes(origin) ? origin : allowed[0]!;
-  return {
-    'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '86400',
-    Vary: 'Origin',
-  };
-}
+const METHODS = 'POST, OPTIONS';
 
 export async function OPTIONS(req: NextRequest) {
-  return new NextResponse(null, { status: 204, headers: corsHeaders(req.headers.get('origin')) });
+  return new NextResponse(null, { status: 204, headers: corsHeaders(req.headers.get('origin'), METHODS) });
 }
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin');
-  const headers = corsHeaders(origin);
-  const allowed = allowedOrigins();
+  const headers = corsHeaders(origin, METHODS);
 
-  if (allowed.length > 0 && (!origin || !allowed.includes(origin))) {
+  if (!originAllowed(origin)) {
     return new NextResponse(null, { status: 403, headers });
   }
 

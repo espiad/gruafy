@@ -9,10 +9,14 @@ import {
   SESSION_COOKIE,
   TRY_COOKIE,
   checkPassword,
+  isValidSession,
   newSessionToken,
+  normalizeTicketUrl,
   readTries,
+  setTicketUrl,
   writeTries,
 } from './server';
+import { revalidatePath } from 'next/cache';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -49,6 +53,26 @@ export async function rushLogin(_prev: { error?: string } | null, form: FormData
   });
   jar.delete({ name: TRY_COOKIE, path: COOKIE_PATH });
   redirect('/rushfrankia');
+}
+
+/**
+ * Guarda la URL de la ticketera. Verifica la sesión ACÁ ADENTRO: una server action
+ * se puede invocar directo, así que no alcanza con que el formulario esté detrás
+ * del login.
+ */
+export async function rushSaveTicketUrl(
+  _prev: { ok?: boolean; error?: string } | null,
+  form: FormData,
+): Promise<{ ok?: boolean; error?: string }> {
+  const jar = await cookies();
+  if (!isValidSession(jar.get(SESSION_COOKIE)?.value)) return { error: 'Tu sesión venció. Volvé a entrar.' };
+
+  const r = normalizeTicketUrl(String(form.get('ticket_url') ?? ''));
+  if (!r.ok) return { error: r.error };
+  if (!(await setTicketUrl(r.url))) return { error: 'No se pudo guardar. Probá de nuevo.' };
+
+  revalidatePath('/rushfrankia');
+  return { ok: true };
 }
 
 export async function rushLogout() {

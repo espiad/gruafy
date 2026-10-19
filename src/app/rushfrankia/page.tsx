@@ -2,10 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { LoginForm } from './login-form';
+import { TicketUrlForm } from './ticket-url-form';
 import { rushLogout } from '@/features/rush/actions';
 import {
   SESSION_COOKIE,
   getStats,
+  getTicketUrl,
   hoyAR,
   isValidSession,
   sumarDias,
@@ -55,8 +57,9 @@ export default async function RushDashboard({ searchParams }: { searchParams: Pr
   const rango: Rango = r === '30' || r === 'all' ? r : '7';
 
   let stats: RushStats | null = null;
+  let ticketUrl = '';
   try {
-    stats = await getStats(rango);
+    [stats, ticketUrl] = await Promise.all([getStats(rango), getTicketUrl()]);
   } catch {
     stats = null;
   }
@@ -111,6 +114,10 @@ export default async function RushDashboard({ searchParams }: { searchParams: Pr
         ) : (
           <Contenido stats={stats} rango={rango} />
         )}
+
+        <div className="mt-3">
+          <TicketUrlForm current={ticketUrl} />
+        </div>
       </div>
     </main>
   );
