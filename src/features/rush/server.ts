@@ -9,8 +9,10 @@ import { serverEnv } from '@/lib/env';
  * src/app/api/rush, la exclusión en middleware.ts y la migración 0011.
  */
 
-export const RUSH_EVENTS = ['page_view', 'reveal_click', 'ticket_click', 'instagram_click'] as const;
+export const RUSH_EVENTS = ['page_view', 'reveal_click', 'ticket_click'] as const;
 export type RushEvent = (typeof RUSH_EVENTS)[number];
+/** Eventos que ya no se miden: se aceptan (para no generar errores en la landing) y se descartan. */
+export const RUSH_IGNORED_EVENTS = ['instagram_click'];
 
 export const SESSION_COOKIE = 'rf_session';
 export const TRY_COOKIE = 'rf_try';

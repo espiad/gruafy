@@ -1,5 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { RUSH_EVENTS, corsHeaders, originAllowed, rushDb, type RushEvent } from '@/features/rush/server';
+import {
+  RUSH_EVENTS,
+  RUSH_IGNORED_EVENTS,
+  corsHeaders,
+  originAllowed,
+  rushDb,
+  type RushEvent,
+} from '@/features/rush/server';
 
 /**
  * Ingesta pública de eventos de la landing RUSH × Frankia (Netlify).
@@ -39,6 +46,11 @@ export async function POST(req: NextRequest) {
 
   const t = body.t;
   const v = body.v;
+  // Instagram dejó de medirse: si una versión vieja del script lo manda, lo
+  // descartamos sin error (204) para no ensuciar la consola de la landing.
+  if (typeof t === 'string' && RUSH_IGNORED_EVENTS.includes(t)) {
+    return new NextResponse(null, { status: 204, headers });
+  }
   if (typeof t !== 'string' || !RUSH_EVENTS.includes(t as RushEvent)) {
     return new NextResponse(null, { status: 400, headers });
   }

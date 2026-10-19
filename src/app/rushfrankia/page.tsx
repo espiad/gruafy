@@ -188,9 +188,9 @@ function Contenido({ stats, rango }: { stats: RushStats; rango: Rango }) {
         </div>
       </section>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+      <div className="mt-3">
         {/* Embudo de conversión */}
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 sm:col-span-2 sm:p-5">
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5">
           <h2 className="text-sm font-medium">Embudo de conversión</h2>
           <div className="mt-4 space-y-1">
             {embudo.map((e, i) => (
@@ -218,19 +218,6 @@ function Contenido({ stats, rango }: { stats: RushStats; rango: Rango }) {
           </div>
         </section>
 
-        {/* Instagram */}
-        <section className="flex flex-col justify-between rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5">
-          <h2 className="text-sm font-medium">Instagram del creador</h2>
-          <div className="mt-4">
-            <p className="text-3xl font-semibold tabular-nums tracking-tight">{fmt(stats.instagram_clicks)}</p>
-            <p className="text-xs text-zinc-500">
-              {stats.instagram_clicks === 1 ? 'clic' : 'clics'} · {fmt(stats.instagram_people)} {personas(stats.instagram_people)}
-            </p>
-            <p className="mt-3 text-xs text-zinc-500">
-              {pct(stats.instagram_people, stats.unique_visitors)} de los visitantes
-            </p>
-          </div>
-        </section>
       </div>
 
       <p className="mt-6 text-center text-[11px] text-zinc-600">

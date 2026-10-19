@@ -2,12 +2,15 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { corsHeaders, getTicketUrl } from '@/features/rush/server';
 
 /**
- * Configuración pública de la landing RUSH × Frankia: devuelve SOLO la URL de la
- * ticketera (es pública por naturaleza: es a donde lleva el botón). Se edita desde
- * el dashboard privado /rushfrankia.
+ * Configuración pública de la landing RUSH × Frankia.
  *
- * Caché corta en el CDN: cada visita no golpea la base, y un cambio desde el
- * dashboard se ve en la landing en menos de un minuto.
+ * No expone el link real de la ticketera: si hay uno cargado, devuelve la dirección
+ * del redirector /api/rush/go, que resuelve el link vigente en el momento del clic.
+ * Así un cambio desde el dashboard rige al instante aunque la landing esté abierta
+ * desde antes. `active` indica si el botón tiene que llevar a la preventa.
+ *
+ * Caché solo en el CDN (20s) para no golpear la base en cada visita; el navegador
+ * no guarda nada.
  */
 
 const METHODS = 'GET, OPTIONS';
@@ -19,15 +22,15 @@ export async function OPTIONS(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const headers = {
     ...corsHeaders(req.headers.get('origin'), METHODS),
-    // La caché es SOLO del CDN (no golpear la base en cada visita). El navegador no
-    // guarda nada: si lo hiciera, tras un cambio seguiría usando la URL vieja.
     'Cache-Control': 'no-store',
     'CDN-Cache-Control': 'public, s-maxage=20, stale-while-revalidate=40',
   };
   try {
-    const ticket_url = await getTicketUrl();
-    return NextResponse.json({ ticket_url }, { headers });
+    const active = /^https?:\/\//i.test(await getTicketUrl());
+    const go = new URL('/api/rush/go', req.url).toString();
+    // `ticket_url` se mantiene por compatibilidad con la primera versión del script.
+    return NextResponse.json({ active, ticket_url: active ? go : '' }, { headers });
   } catch {
-    return NextResponse.json({ ticket_url: '' }, { status: 500, headers });
+    return NextResponse.json({ active: false, ticket_url: '' }, { status: 500, headers });
   }
 }
